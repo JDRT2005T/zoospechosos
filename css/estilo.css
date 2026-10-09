@@ -233,3 +233,14 @@ input::placeholder { color: rgba(255, 255, 255, .35); }
 .sacudir { animation: sacudir .5s; }
 @keyframes sacudir { 20% { transform: translate(-8px, 4px); } 40% { transform: translate(7px, -5px); } 60% { transform: translate(-5px, 3px); } 80% { transform: translate(3px, -2px); } }
 @media (min-width: 700px) { .derecha .emotes { width: auto; } }
+
+/* ===== app instalable ===== */
+[hidden] { display: none !important; }
+.pildora { display: block; margin: 12px auto 0; padding: 8px 16px; border-radius: 999px; font-weight: 900; font-size: 14px; color: #08332f;
+  background: linear-gradient(180deg, #6ffff2, var(--cian)); box-shadow: 0 4px 0 #13968b, 0 6px 18px rgba(46, 230, 214, .35); }
+.pildora:active { transform: translateY(3px); box-shadow: 0 1px 0 #13968b; }
+.pasos { background: rgba(255, 255, 255, .06); border-radius: 14px; padding: 4px 12px; }
+.pasos p { margin: 8px 0; font-weight: 700; }
+.pasos .ic { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: rgba(255, 255, 255, .12); }
+/* app instalada: respetar la muesca del celular */
+@media (display-mode: standalone) { body { -webkit-touch-callout: none; } }
