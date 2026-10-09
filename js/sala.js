@@ -1,4 +1,4 @@
-// ZOOspechosos — Parte 2: salas con código y sala de espera en tiempo real
+// ZOOspechosos — Parte 2: salas con código + Salón VIP (moverse, chat e interacciones)
 (function () {
   const A = window.ZooApp, sb = A.sb, T = THREE;
   const $ = s => document.querySelector(s);
@@ -31,16 +31,24 @@
   const DEF = { modo: 'caceria', mapa: 'mansion', max: 10, impostores: 1, velocidad: 1, misiones: 4, reunion: 60, caza: 120, enfriamiento: 30, votoAnonimo: false, mostrarRol: true };
 
   // ---------- estado ----------
-  let sala = null;        // { codigo, host, config }
-  let canal = null;
-  let jugadores = [];     // [{ id, apodo, animal, ..., listo, desde }]
-  let yo = null;          // mi estado de presencia
-  let primeraSync = true;
-  let latido = null, hostAusenteDesde = 0;
-  const pjs = new Map();  // id -> { obj, clave, etiqueta, destino, t }
+  let sala = null, canal = null;
+  let jugadores = [];            // presencia, ordenados por llegada
+  let yo = null;                 // mi estado de presencia
+  let primeraSync = true, latido = null, hostAusenteDesde = 0;
+  const pjs = new Map();         // id -> datos del muñeco
+  const cargas = new Map();      // cargado -> portador
+  const yoPos = { x: 0, z: 0, r: 0 };
+  let ultimoEnvio = 0, meMovia = false;
 
-  const soyHost = () => sala && A.perfil && sala.host === A.perfil.id;
+  const miId = () => A.perfil && A.perfil.id;
+  const soyHost = () => sala && A.perfil && sala.host === miId();
   const cfg = () => Object.assign({}, DEF, sala ? sala.config : {});
+  const nombreDe = id => { const j = jugadores.find(x => x.id === id); return j ? j.apodo : '???'; };
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const enviar = (event, payload) => canal && canal.send({ type: 'broadcast', event, payload });
+  const llevaA = id => [...cargas.values()].includes(id); // ¿id lleva a alguien cargado?
+
+  A.escena.add(Salon.grupo);
 
   // ================= ENTRAR / SALIR =================
   $('#b-crear').onclick = async () => {
@@ -68,30 +76,42 @@
 
   function entrar(fila) {
     sala = { codigo: fila.codigo, host: fila.host, config: fila.config || {} };
-    jugadores = []; primeraSync = true; hostAusenteDesde = 0;
+    jugadores = []; primeraSync = true; hostAusenteDesde = 0; cargas.clear();
     const p = A.perfil;
     yo = { id: p.id, apodo: p.apodo, animal: p.animal, color: p.color, sombrero: p.sombrero, gafas: p.gafas, accesorio: p.accesorio, listo: false, desde: Date.now() };
+    Object.assign(yoPos, Salon.lugarLibre(), { r: 0 });
     $('#s-cod').textContent = sala.codigo;
+    $('#chat-log').innerHTML = '';
+    Salon.grupo.visible = true;
     A.ir('sala');
+    camaraLista = false;
     pintarTodo();
 
     canal = sb.channel('zoo-sala-' + sala.codigo, { config: { presence: { key: p.id }, broadcast: { self: true } } });
     canal
       .on('presence', { event: 'sync' }, alSincronizar)
+      .on('broadcast', { event: 'mov' }, ({ payload }) => alMover(payload))
       .on('broadcast', { event: 'config' }, ({ payload }) => { sala.config = payload; pintarTodo(); })
       .on('broadcast', { event: 'host' }, ({ payload }) => {
         sala.host = payload.id;
-        if (payload.id === A.perfil.id) { A.toast('👑 Ahora eres el anfitrión'); yo.listo = false; canal.track(yo); }
+        if (payload.id === miId()) { A.toast('👑 Ahora eres el anfitrión'); yo.listo = false; canal.track(yo); }
+        mensajeSistema('👑 ' + nombreDe(payload.id) + ' es el anfitrión');
         pintarTodo();
       })
       .on('broadcast', { event: 'listo' }, ({ payload }) => { const j = jugadores.find(x => x.id === payload.id); if (j) { j.listo = payload.listo; pintarTodo(); } })
       .on('broadcast', { event: 'emote' }, ({ payload }) => mostrarEmote(payload.id, payload.e))
+      .on('broadcast', { event: 'chat' }, ({ payload }) => alChat(payload))
+      .on('broadcast', { event: 'accion' }, ({ payload }) => alAccion(payload))
+      .on('broadcast', { event: 'pedir' }, ({ payload }) => alPedir(payload))
+      .on('broadcast', { event: 'respuesta' }, ({ payload }) => alResponder(payload))
+      .on('broadcast', { event: 'carga' }, ({ payload }) => alCargar(payload))
+      .on('broadcast', { event: 'soltar' }, ({ payload }) => alSoltar(payload))
       .on('broadcast', { event: 'expulsar' }, ({ payload }) => {
-        if (payload.id === A.perfil.id) { salirLocal(); A.toast('Te sacaron de la sala 🚪'); }
+        if (payload.id === miId()) { salirLocal(); A.toast('Te sacaron de la sala 🚪'); }
       })
-      .on('broadcast', { event: 'inicio' }, ({ payload }) => alIniciar(payload))
+      .on('broadcast', { event: 'inicio' }, () => alIniciar())
       .subscribe(estado => {
-        if (estado === 'SUBSCRIBED') canal.track(yo);
+        if (estado === 'SUBSCRIBED') { canal.track(yo); enviarPos(true); }
         if (estado === 'CHANNEL_ERROR' || estado === 'TIMED_OUT') A.toast('Problema de conexión con la sala 📶');
       });
 
@@ -103,10 +123,10 @@
   async function salir() {
     if (!sala) return;
     if (soyHost()) {
-      const otros = jugadores.filter(j => j.id !== A.perfil.id);
+      const otros = jugadores.filter(j => j.id !== miId());
       if (otros.length) {
         const { data: ok } = await sb.rpc('zoo_pasar_host', { cod: sala.codigo, nuevo: otros[0].id });
-        if (ok) canal.send({ type: 'broadcast', event: 'host', payload: { id: otros[0].id } });
+        if (ok) enviar('host', { id: otros[0].id });
       } else {
         await sb.from('zoo_salas').delete().eq('codigo', sala.codigo);
       }
@@ -116,9 +136,11 @@
   function salirLocal() {
     clearInterval(latido);
     if (canal) { canal.untrack(); sb.removeChannel(canal); canal = null; }
-    sala = null; jugadores = [];
-    pjs.forEach((v, id) => quitarPj(id));
+    sala = null; jugadores = []; cargas.clear();
+    [...pjs.keys()].forEach(quitarPj);
     $$('.modal').forEach(m => m.classList.remove('activa'));
+    ['#chat-barra', '#solicitud', '#b-bajar', '#emotes'].forEach(s => $(s).classList.remove('ver'));
+    Salon.grupo.visible = false;
     A.ir('menu');
   }
   $('#s-salir').onclick = () => { if (confirm('¿Salir de la sala?')) salir(); };
@@ -129,13 +151,11 @@
   async function revisarHost() {
     if (!sala) return;
     if (soyHost()) { if (++contLatido % 2 === 0) tocarSala(); return; }
-    const hostAqui = jugadores.some(j => j.id === sala.host);
-    if (hostAqui) { hostAusenteDesde = 0; return; }
+    if (jugadores.some(j => j.id === sala.host)) { hostAusenteDesde = 0; return; }
     if (!hostAusenteDesde) hostAusenteDesde = Date.now();
-    // el jugador más antiguo hereda la sala si el anfitrión se fue
-    if (Date.now() - hostAusenteDesde > 8000 && jugadores[0] && jugadores[0].id === A.perfil.id) {
+    if (Date.now() - hostAusenteDesde > 8000 && jugadores[0] && jugadores[0].id === miId()) {
       const { data: ok } = await sb.rpc('zoo_heredar_host', { cod: sala.codigo });
-      if (ok) canal.send({ type: 'broadcast', event: 'host', payload: { id: A.perfil.id } });
+      if (ok) enviar('host', { id: miId() });
     }
   }
 
@@ -145,86 +165,500 @@
     const lista = [];
     Object.values(st).forEach(arr => { if (arr && arr.length) lista.push(arr[arr.length - 1]); }); // el último es el más nuevo
     lista.sort((a, b) => a.desde - b.desde);
-    // ¿la sala está llena?
-    if (primeraSync && lista.some(j => j.id === A.perfil.id)) {
+    if (primeraSync && lista.some(j => j.id === miId())) {
       primeraSync = false;
-      const pos = lista.findIndex(j => j.id === A.perfil.id);
+      const pos = lista.findIndex(j => j.id === miId());
       if (pos >= cfg().max) { salirLocal(); return A.toast('La sala está llena 😕'); }
-      if (lista.length > 1) A.bip(990, 0.12);
     }
-    const antes = new Set(jugadores.map(j => j.id));
-    jugadores = lista.slice(0, cfg().max);
-    jugadores.forEach(j => { if (!antes.has(j.id) && !primeraSync && j.id !== A.perfil.id) A.bip(1100, 0.1); });
+    const antes = new Map(jugadores.map(j => [j.id, j]));
+    const nuevos = lista.slice(0, cfg().max);
+    const ahora = new Set(nuevos.map(j => j.id));
+    nuevos.forEach(j => {
+      if (!antes.has(j.id) && antes.size && j.id !== miId()) { mensajeSistema('🐾 ' + j.apodo + ' entró a la sala'); A.bip(1100, 0.1); }
+    });
+    antes.forEach((j, id) => { if (!ahora.has(id)) mensajeSistema('👋 ' + j.apodo + ' salió'); });
+    // si alguien nuevo llegó, le contamos dónde estoy
+    if (nuevos.some(j => !antes.has(j.id) && j.id !== miId())) setTimeout(() => enviarPos(true), Math.random() * 300);
+    jugadores = nuevos;
+    // limpiar cargas de gente que se fue
+    [...cargas].forEach(([c, p]) => { if (!ahora.has(c) || !ahora.has(p)) alSoltar({ cargado: c, silencio: true }); });
     pintarTodo();
   }
 
-  // ================= 3D =================
-  function lugar(i, n) {
-    const ancho = innerWidth / innerHeight < 0.8 ? 3 : 5;
-    const fila = Math.floor(i / ancho), enFila = Math.min(ancho, n - fila * ancho), col = i % ancho;
-    return new T.Vector3((col - (enFila - 1) / 2) * 1.3, 0, 1.0 - fila * 1.35);
+  // ================= MOVIMIENTO =================
+  // joystick táctil
+  const joy = { x: 0, y: 0 }; let joyId = null;
+  const base = $('#joy'), bola = $('#joy-bola');
+  function moverJoy(e) {
+    const r = base.getBoundingClientRect(), max = r.width / 2 - 12;
+    let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+    const d = Math.hypot(dx, dy); if (d > max) { dx *= max / d; dy *= max / d; }
+    joy.x = dx / max; joy.y = dy / max;
+    bola.style.transform = `translate(${dx}px, ${dy}px)`;
   }
+  base.addEventListener('pointerdown', e => { joyId = e.pointerId; base.setPointerCapture(e.pointerId); moverJoy(e); });
+  base.addEventListener('pointermove', e => { if (e.pointerId === joyId) moverJoy(e); });
+  const soltarJoy = e => { if (e.pointerId !== joyId) return; joyId = null; joy.x = joy.y = 0; bola.style.transform = ''; };
+  base.addEventListener('pointerup', soltarJoy); base.addEventListener('pointercancel', soltarJoy);
+  // teclado (PC)
+  const teclas = new Set();
+  const escribiendo = () => document.activeElement && document.activeElement.tagName === 'INPUT';
+  addEventListener('keydown', e => {
+    if (A.pantalla !== 'sala' || escribiendo()) return;
+    teclas.add(e.key.toLowerCase());
+    if (e.key === 'Enter') { e.preventDefault(); abrirChat(); }
+  });
+  addEventListener('keyup', e => teclas.delete(e.key.toLowerCase()));
+  addEventListener('blur', () => teclas.clear());
+
+  function entrada() {
+    let x = joy.x, z = joy.y;
+    if (!escribiendo()) {
+      if (teclas.has('a') || teclas.has('arrowleft')) x -= 1;
+      if (teclas.has('d') || teclas.has('arrowright')) x += 1;
+      if (teclas.has('w') || teclas.has('arrowup')) z -= 1;
+      if (teclas.has('s') || teclas.has('arrowdown')) z += 1;
+    }
+    const d = Math.hypot(x, z);
+    if (d > 1) { x /= d; z /= d; }
+    return { x, z, d: Math.min(1, d) };
+  }
+
+  function enviarPos(forzar) {
+    if (!canal) return;
+    const ahora = performance.now();
+    if (!forzar && ahora - ultimoEnvio < 110) return;
+    ultimoEnvio = ahora;
+    enviar('mov', { i: miId(), x: +yoPos.x.toFixed(2), z: +yoPos.z.toFixed(2), r: +yoPos.r.toFixed(2) });
+  }
+  function alMover(m) {
+    if (m.i === miId()) return;
+    const v = pjs.get(m.i); if (!v) return;
+    v.tx = m.x; v.tz = m.z; v.tr = m.r; v.ultimoMov = performance.now();
+    if (!v.posLista) { v.cx = m.x; v.cz = m.z; v.cr = m.r; v.posLista = true; }
+  }
+
+  // ================= MUÑECOS =================
   function claveRopa(j) { return [j.animal, j.color, j.sombrero, j.gafas, j.accesorio].join('|'); }
   function quitarPj(id) {
     const v = pjs.get(id); if (!v) return;
-    A.escena.remove(v.obj); Zoo.liberar(v.obj); v.etiqueta.remove(); pjs.delete(id);
+    if (v.obj) { A.escena.remove(v.obj); Zoo.liberar(v.obj); }
+    v.etiqueta.remove(); pjs.delete(id);
   }
   function sincronizar3D() {
     const ids = new Set(jugadores.map(j => j.id));
     [...pjs.keys()].forEach(id => { if (!ids.has(id)) quitarPj(id); });
-    jugadores.forEach((j, i) => {
+    jugadores.forEach(j => {
       let v = pjs.get(j.id);
       const clave = claveRopa(j);
-      if (v && v.clave !== clave) { A.escena.remove(v.obj); Zoo.liberar(v.obj); v.obj = null; }
+      if (v && v.clave !== clave) { A.escena.remove(v.obj); Zoo.liberar(v.obj); v.obj = null; v.estrellas = null; }
       if (!v) {
         const et = document.createElement('div'); et.className = 'etiqueta';
-        et.onclick = () => tocarJugador(j.id);
+        et.innerHTML = '<span class="nom"></span>';
+        et.onclick = () => abrirInteraccion(j.id);
         $('#etiquetas').appendChild(et);
-        v = { etiqueta: et, obj: null }; pjs.set(j.id, v);
+        v = { etiqueta: et, obj: null, cx: 0, cz: 0, cr: 0, tx: 0, tz: 0, tr: 0, ultimoMov: 0, posLista: false, efecto: null, caida: 3 };
+        if (j.id === miId()) { v.cx = v.tx = yoPos.x; v.cz = v.tz = yoPos.z; v.posLista = true; }
+        pjs.set(j.id, v);
       }
       if (!v.obj) {
         v.obj = Zoo.crear(j); v.clave = clave;
-        v.obj.position.copy(lugar(i, jugadores.length)); v.obj.position.y = 4; // cae desde arriba
+        v.obj.userData.idJugador = j.id;
         A.escena.add(v.obj);
       }
-      v.destino = lugar(i, jugadores.length);
       v.listo = j.listo;
-      const host = j.id === sala.host, mio = j.id === A.perfil.id;
-      v.etiqueta.className = 'etiqueta' + (mio ? ' yo' : '') + (j.listo || host ? ' ok' : '');
-      v.etiqueta.innerHTML = `${host ? '<i>👑</i>' : ''}<span>${esc(j.apodo)}</span>${host ? '' : (j.listo ? '<em>✔</em>' : '<em class="no">…</em>')}`;
+      const host = j.id === sala.host, mio = j.id === miId();
+      v.etiqueta.classList.toggle('yo', mio);
+      v.etiqueta.classList.toggle('ok', !!(j.listo || host));
+      v.etiqueta.querySelector('.nom').innerHTML = `${host ? '<i>👑</i>' : ''}<span>${esc(j.apodo)}</span>${host ? '' : (j.listo ? '<em>✔</em>' : '<em class="no">…</em>')}`;
     });
   }
-  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-  const proy = new T.Vector3();
-  A.alCuadro.push(dt => {
-    if (A.pantalla !== 'sala') return;
+  // ---------- efectos (animaciones especiales) ----------
+  const DUR = { jutsu_atacante: 1.4, jutsu_victima: 4.6, abrazo: 2.2, cinco: 1.3, empujar_atacante: 0.6, empujar_victima: 0.9, bailar: 5 };
+  const BLOQUEA = { jutsu_atacante: 1.2, jutsu_victima: 2.6, abrazo: 2.0, cinco: 1.0, empujar_atacante: 0.4, empujar_victima: 0.45 };
+  function ponerEfecto(id, nombre, extra) {
+    const v = pjs.get(id); if (!v) return;
+    if (v.obj) { v.obj.userData.cuerpo.rotation.x = 0; v.obj.userData.cuerpo.scale.set(1, 1, 1); }
+    v.alto = 0;
+    v.efecto = Object.assign({ n: nombre, t: 0 }, extra || {});
+  }
+  function bloqueado() {
+    const v = pjs.get(miId());
+    if (cargas.has(miId())) return true;
+    return !!(v && v.efecto && BLOQUEA[v.efecto.n] && v.efecto.t < BLOQUEA[v.efecto.n]);
+  }
+  function estrellas(v, ver) {
+    if (!v.estrellas && ver) {
+      const g = new T.Group();
+      for (let i = 0; i < 4; i++) {
+        const e = new T.Mesh(new T.OctahedronGeometry(0.09), new T.MeshBasicMaterial({ color: i % 2 ? '#ffd93d' : '#ffffff' }));
+        e.position.set(Math.cos(i / 4 * Math.PI * 2) * 0.45, 0, Math.sin(i / 4 * Math.PI * 2) * 0.45); g.add(e);
+      }
+      g.position.y = 2.0; v.obj.add(g); v.estrellas = g;
+    }
+    if (v.estrellas) v.estrellas.visible = ver;
+  }
+  function aplicarEfecto(v, dt, id) {
+    const e = v.efecto; if (!e) return;
+    e.t += dt;
+    const u = v.obj.userData, c = u.cuerpo, t = e.t;
+    if (t > (DUR[e.n] || 1)) { v.efecto = null; estrellas(v, false); c.rotation.x = 0; c.scale.set(1, 1, 1); u.ojos.forEach(o => o.scale.set(1, 1, 1)); v.alto = 0; return; }
+    const br = u.brazos;
+    if (e.n === 'jutsu_atacante') {
+      if (t < 0.75) { // sello de manos
+        br.forEach((b, i) => { b.rotation.x = -1.35; b.rotation.z = (i ? -1 : 1) * 0.55; });
+        c.rotation.x = -0.05;
+      } else { // ¡golpe!
+        const k = Math.min(1, (t - 0.75) / 0.12);
+        br.forEach((b, i) => { b.rotation.x = -1.35 - 0.9 * k; b.rotation.z = (i ? -1 : 1) * 0.5; });
+        c.rotation.x = 0.3 * k;
+      }
+    } else if (e.n === 'jutsu_victima') {
+      if (t < 0.75) { u.ojos.forEach(o => o.scale.set(1.3, 1.3, 1)); } // ojos de susto
+      else if (t < 2.1) {
+        u.ojos.forEach(o => o.scale.set(1, o.scale.y, 1));
+        const s = (t - 0.75) / 1.35;
+        v.alto = 4 * 3.4 * s * (1 - s);
+        c.rotation.x = s * Math.PI * 4;
+        br.forEach((b, i) => b.rotation.z = (i ? -1 : 1) * 2.5);
+        u.piernas.forEach(l => l.rotation.x = 0.8);
+      } else {
+        v.alto = 0; c.rotation.x = 0;
+        const s = Math.min(1, (t - 2.1) / 0.25);
+        c.scale.set(1 + 0.25 * (1 - s), 1 - 0.35 * (1 - s), 1 + 0.25 * (1 - s));
+        c.rotation.z = Math.sin(t * 9) * 0.12;
+        estrellas(v, true);
+        v.estrellas.rotation.y += dt * 5;
+      }
+    } else if (e.n === 'abrazo') {
+      br.forEach((b, i) => { b.rotation.x = -1.3; b.rotation.z = (i ? 1 : -1) * 0.6; });
+      c.rotation.z = Math.sin(t * 6) * 0.06;
+    } else if (e.n === 'cinco') {
+      const k = Math.min(1, t / 0.3);
+      br[1].rotation.z = 0.35 + 2.3 * k; br[1].rotation.x = -0.6 * k;
+      if (t > 0.45 && t < 0.75) v.alto = Math.sin((t - 0.45) / 0.3 * Math.PI) * 0.4; else v.alto = 0;
+    } else if (e.n === 'empujar_atacante') {
+      const k = Math.sin(Math.min(1, t / 0.6) * Math.PI);
+      br.forEach(b => { b.rotation.x = -1.5 * k; b.rotation.z *= 0.5; });
+      c.rotation.x = 0.25 * k;
+    } else if (e.n === 'empujar_victima') {
+      const k = Math.sin(Math.min(1, t / 0.9) * Math.PI);
+      c.rotation.x = -k * 0.5;
+      br.forEach((b, i) => b.rotation.z = (i ? -1 : 1) * (0.35 + 1.5 * k));
+    }
+    // movimientos que el dueño hace sobre su propia posición
+    if (id === miId() && e.dir) {
+      if (e.n === 'jutsu_victima' && t > 0.75 && t < 2.1) mover(e.dir.x * 1.8 * dt / 1.35, e.dir.z * 1.8 * dt / 1.35);
+      if (e.n === 'empujar_victima' && t < 0.35) mover(e.dir.x * 1.7 * dt / 0.35, e.dir.z * 1.7 * dt / 0.35);
+    }
+  }
+  function mover(dx, dz) { yoPos.x += dx; yoPos.z += dz; Salon.colisionar(yoPos); enviarPos(); }
+
+  // ---------- bucle del salón ----------
+  const proy = new T.Vector3(), camPos = new T.Vector3(), camMira = new T.Vector3(), tmp = new T.Vector3();
+  let camaraLista = false, sacudida = 0;
+  const angulo = (a, b, k) => { let d = b - a; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return a + d * k; };
+
+  A.alCuadro.push((dt, t) => {
+    if (A.pantalla !== 'sala' || !sala) return;
+    Salon.animar(dt, t);
+    // 1) mi movimiento
+    const yoV = pjs.get(miId());
+    const ent = entrada();
+    let meMuevo = false;
+    if (!bloqueado() && ent.d > 0.12) {
+      const vel = 3.3 * cfg().velocidad * (llevaA(miId()) ? 0.8 : 1);
+      yoPos.x += ent.x * vel * dt; yoPos.z += ent.z * vel * dt;
+      Salon.colisionar(yoPos);
+      yoPos.r = angulo(yoPos.r, Math.atan2(ent.x, ent.z), Math.min(1, dt * 14));
+      meMuevo = true;
+      if (yoV && yoV.efecto && yoV.efecto.n === 'bailar') yoV.efecto = null;
+    }
+    if (meMuevo) enviarPos();
+    else if (meMovia) enviarPos(true);
+    else if (performance.now() - ultimoEnvio > 3000) enviarPos(true);
+    meMovia = meMuevo;
+
+    // 2) actualizar muñecos
     const w = innerWidth, h = innerHeight;
-    pjs.forEach(v => {
+    const k = 1 - Math.exp(-dt * 12);
+    pjs.forEach((v, id) => {
       const o = v.obj; if (!o) return;
-      o.position.x += (v.destino.x - o.position.x) * Math.min(1, dt * 5);
-      o.position.z += (v.destino.z - o.position.z) * Math.min(1, dt * 5);
-      if (o.position.y > 0) { o.userData.vy = (o.userData.vy || 0) - 18 * dt; o.position.y = Math.max(0, o.position.y + o.userData.vy * dt); if (!o.position.y) o.userData.vy = 0; }
-      if (v.salto > 0) v.salto -= dt;
-      Zoo.animar(o, dt, v.salto > 0 ? 'quieto' : (v.listo ? 'baile' : 'quieto'));
-      if (v.salto > 0) o.userData.cuerpo.position.y = Math.sin((0.5 - v.salto) / 0.5 * Math.PI) * 0.5;
+      o.visible = v.posLista; v.etiqueta.style.visibility = v.posLista ? '' : 'hidden'; // esperar a saber dónde está
+      let andando;
+      if (id === miId()) { v.cx = yoPos.x; v.cz = yoPos.z; v.cr = yoPos.r; andando = meMuevo; }
+      else {
+        const dx = v.tx - v.cx, dz = v.tz - v.cz;
+        if (dx * dx + dz * dz > 9) { v.cx = v.tx; v.cz = v.tz; } // muy lejos: teletransportar
+        v.cx += dx * k; v.cz += dz * k; v.cr = angulo(v.cr, v.tr, k);
+        andando = Math.hypot(dx, dz) > 0.04 && performance.now() - v.ultimoMov < 400;
+      }
+      // caída al entrar
+      if (v.caida > 0) { v.vy = (v.vy || 0) - 20 * dt; v.caida = Math.max(0, v.caida + v.vy * dt); if (!v.caida) v.vy = 0; }
+      const portador = cargas.get(id);
+      const pv = portador && pjs.get(portador);
+      if (pv) {
+        o.position.set(pv.cx, 1.45 + (pv.alto || 0), pv.cz); o.rotation.y = pv.cr;
+        Zoo.animar(o, dt, 'quieto');
+        o.userData.piernas.forEach(l => l.rotation.x = -1.3);
+        o.userData.brazos.forEach((b, i) => b.rotation.z = (i ? -1 : 1) * (2.2 + Math.sin(t * 8 + i) * 0.3));
+      } else {
+        o.position.set(v.cx, (v.alto || 0) + v.caida, v.cz); o.rotation.y = v.cr;
+        const baila = (v.efecto && v.efecto.n === 'bailar') || (v.listo && !andando);
+        Zoo.animar(o, dt, andando ? 'caminar' : (baila ? 'baile' : 'quieto'));
+        if (llevaA(id)) o.userData.brazos.forEach((b, i) => { b.rotation.z = (i ? -1 : 1) * 2.7; b.rotation.x = 0; });
+      }
+      aplicarEfecto(v, dt, id);
+      // etiqueta
       proy.set(o.position.x, o.position.y + 2.05, o.position.z).project(A.camara);
+      v.etiqueta.style.display = proy.z > 1 ? 'none' : '';
       v.etiqueta.style.transform = `translate(${(proy.x * 0.5 + 0.5) * w}px, ${(-proy.y * 0.5 + 0.5) * h}px) translate(-50%, -100%)`;
     });
+
+    // 3) cámara que me sigue
+    const yv = pjs.get(miId());
+    const px = yv && yv.obj ? yv.obj.position.x : yoPos.x, pz = yv && yv.obj ? yv.obj.position.z : yoPos.z;
+    const z = innerWidth / innerHeight < 0.75 ? 1.3 : 1;
+    tmp.set(px * 0.85, 8.4 * z, pz + 6.2 * z);
+    if (!camaraLista) { camPos.copy(tmp); camMira.set(px * 0.85, 0.3, pz - 0.7); camaraLista = true; }
+    camPos.lerp(tmp, 1 - Math.exp(-dt * 5));
+    camMira.lerp(tmp.set(px * 0.85, 0.3, pz - 0.7), 1 - Math.exp(-dt * 5));
+    A.camara.position.copy(camPos);
+    if (sacudida > 0) { sacudida -= dt; A.camara.position.x += (Math.random() - 0.5) * sacudida; A.camara.position.y += (Math.random() - 0.5) * sacudida; }
+    A.camara.lookAt(camMira);
   });
 
+  // ================= TOCAR A OTRO JUGADOR =================
+  const ray = new T.Raycaster(), punto = new T.Vector2();
+  let toque = null;
+  const lienzo = A.renderer.domElement;
+  lienzo.addEventListener('pointerdown', e => { if (A.pantalla === 'sala') toque = { x: e.clientX, y: e.clientY, t: performance.now() }; });
+  lienzo.addEventListener('pointerup', e => {
+    if (A.pantalla !== 'sala' || !toque) return;
+    const corto = performance.now() - toque.t < 400 && Math.hypot(e.clientX - toque.x, e.clientY - toque.y) < 12;
+    toque = null; if (!corto) return;
+    punto.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+    ray.setFromCamera(punto, A.camara);
+    const objs = [...pjs.entries()].filter(([id, v]) => id !== miId() && v.obj).map(([, v]) => v.obj);
+    const hit = ray.intersectObjects(objs, true)[0];
+    if (!hit) return;
+    let o = hit.object; while (o && !o.userData.idJugador) o = o.parent;
+    if (o) abrirInteraccion(o.userData.idJugador);
+  });
+
+  let jugadorSel = null;
+  const distA = id => { const v = pjs.get(id); return v ? Math.hypot(v.cx - yoPos.x, v.cz - yoPos.z) : 99; };
+  function abrirInteraccion(id) {
+    if (!sala || id === miId()) return;
+    jugadorSel = id;
+    $('#mi-nombre').textContent = nombreDe(id);
+    $('#m-interactuar .solo-host').classList.toggle('ver', soyHost());
+    A.abrir('#m-interactuar');
+  }
+  let ultimaAccion = 0, ultimoJutsu = 0;
+  $$('#m-interactuar [data-a]').forEach(b => b.onclick = () => {
+    const id = jugadorSel, a = b.dataset.a;
+    $('#m-interactuar').classList.remove('activa');
+    if (!id || !pjs.get(id)) return;
+    if (cargas.has(miId())) return A.toast('Primero bájate 😅');
+    if (distA(id) > 2.4) return A.toast('Acércate más a ' + nombreDe(id) + ' 🚶');
+    const ahora = Date.now();
+    if (ahora - ultimaAccion < 1500) return A.toast('Espera un segundito ⏳');
+    if (a === 'jutsu' && ahora - ultimoJutsu < 6000) return A.toast('Tu chakra se está recargando 🌀');
+    ultimaAccion = ahora; if (a === 'jutsu') ultimoJutsu = ahora;
+    hacer(a, id);
+  });
+
+  function hacer(a, id) {
+    const v = pjs.get(id);
+    const vx = v.cx, vz = v.cz;
+    if (a === 'cargar') {
+      if (cargas.has(id) || llevaA(id)) return A.toast(nombreDe(id) + ' está ocupado 🤭');
+      if (llevaA(miId())) return A.toast('Ya llevas a alguien cargado 💪');
+      enviar('pedir', { tipo: 'cargar', de: miId(), a: id });
+      return A.toast('Esperando a que ' + nombreDe(id) + ' acepte… ⏳');
+    }
+    if (cargas.has(id)) return A.toast(nombreDe(id) + ' va cargado, ¡déjalo en paz! 😂');
+    let ax = yoPos.x, az = yoPos.z;
+    if (a === 'jutsu') { // aparecer detrás de la víctima
+      const fx = Math.sin(v.cr), fz = Math.cos(v.cr);
+      const p = Salon.colisionar({ x: vx - fx * 0.85, z: vz - fz * 0.85 });
+      ax = p.x; az = p.z;
+    } else if (a === 'abrazo' || a === 'cinco' || a === 'bailar') { // ponerse en frente
+      const dx = yoPos.x - vx, dz = yoPos.z - vz, d = Math.hypot(dx, dz) || 1;
+      const sep = a === 'abrazo' ? 0.72 : 0.95;
+      const p = Salon.colisionar({ x: vx + dx / d * sep, z: vz + dz / d * sep });
+      ax = p.x; az = p.z;
+    }
+    const ar = Math.atan2(vx - ax, vz - az);
+    enviar('accion', { tipo: a, de: miId(), a: id, ax: +ax.toFixed(2), az: +az.toFixed(2), ar: +ar.toFixed(2) });
+  }
+
+  function posDe(id) { const v = pjs.get(id); return id === miId() ? { x: yoPos.x, z: yoPos.z } : (v ? { x: v.cx, z: v.cz } : null); }
+  function alAccion(m) {
+    const va = pjs.get(m.de), vb = pjs.get(m.a);
+    if (!va || !vb) return;
+    // el que hace la acción se ubica (y se gira)
+    if (m.de === miId()) { yoPos.x = m.ax; yoPos.z = m.az; yoPos.r = m.ar; enviarPos(true); }
+    else { va.cx = va.tx = m.ax; va.cz = va.tz = m.az; va.cr = va.tr = m.ar; }
+    const pb = posDe(m.a);
+    let dx = pb.x - m.ax, dz = pb.z - m.az; const d = Math.hypot(dx, dz) || 1; dx /= d; dz /= d;
+    // el que recibe mira al otro (salvo en el jutsu y el empujón: ¡por la espalda!)
+    if (m.a === miId() && m.tipo !== 'jutsu' && m.tipo !== 'empujar') { yoPos.r = Math.atan2(-dx, -dz); enviarPos(true); }
+    const yoEstoy = m.de === miId() || m.a === miId();
+    if (m.tipo === 'jutsu') {
+      ponerEfecto(m.de, 'jutsu_atacante'); ponerEfecto(m.a, 'jutsu_victima', { dir: { x: dx, z: dz } });
+      texto(m.de, '💨 🙏 ¡Sello del tigre!');
+      A.bip(400, 0.3, 'sine', 0.04);
+      setTimeout(() => {
+        texto(m.a, '💥 ¡MIL AÑOS DE MUERTE! 🍑');
+        if (yoEstoy) { sacudida = 0.5; document.body.classList.add('sacudir'); setTimeout(() => document.body.classList.remove('sacudir'), 500); }
+        [300, 200, 900, 1400].forEach((f, i) => setTimeout(() => A.bip(f, 0.12, i % 2 ? 'square' : 'sawtooth', 0.05), i * 80));
+      }, 750);
+      setTimeout(() => texto(m.a, '😵 ¡Ay, ay, ay!'), 2300);
+      mensajeSistema('🍑 ' + nombreDe(m.de) + ' le hizo el jutsu MIL AÑOS DE MUERTE a ' + nombreDe(m.a));
+    } else if (m.tipo === 'abrazo') {
+      ponerEfecto(m.de, 'abrazo'); ponerEfecto(m.a, 'abrazo');
+      texto(m.a, '💕'); setTimeout(() => texto(m.de, '🥰'), 300);
+      A.bip(660, 0.2, 'sine', 0.05);
+    } else if (m.tipo === 'cinco') {
+      ponerEfecto(m.de, 'cinco'); ponerEfecto(m.a, 'cinco');
+      setTimeout(() => { texto(m.a, '🙌 ¡PAM! ✨'); A.bip(1500, 0.08, 'square', 0.05); }, 450);
+    } else if (m.tipo === 'empujar') {
+      ponerEfecto(m.de, 'empujar_atacante'); ponerEfecto(m.a, 'empujar_victima', { dir: { x: dx, z: dz } });
+      texto(m.a, '😤 ¡Oye!'); A.bip(220, 0.12, 'square', 0.05);
+      if (m.a === miId()) sacudida = 0.25;
+    } else if (m.tipo === 'bailar') {
+      ponerEfecto(m.de, 'bailar'); ponerEfecto(m.a, 'bailar');
+      texto(m.de, '🎶'); setTimeout(() => texto(m.a, '💃🕺'), 250);
+      mensajeSistema('💃 ' + nombreDe(m.de) + ' y ' + nombreDe(m.a) + ' están bailando');
+    }
+  }
+
+  // ---------- llevar cargado (el otro tiene que aceptar) ----------
+  let solicitud = null, solTimer = null;
+  function alPedir(m) {
+    if (m.a !== miId()) return;
+    if (cargas.has(miId()) || llevaA(miId())) return enviar('respuesta', { de: miId(), a: m.de, ok: false, ocupado: true });
+    solicitud = m;
+    $('#sol-txt').textContent = '🏋️ ' + nombreDe(m.de) + ' quiere llevarte cargado. ¿Te subes?';
+    $('#solicitud').classList.add('ver');
+    A.bip(880, 0.1); setTimeout(() => A.bip(1180, 0.12), 120);
+    clearTimeout(solTimer); solTimer = setTimeout(() => responder(false), 9000);
+  }
+  function responder(ok) {
+    if (!solicitud) return;
+    clearTimeout(solTimer);
+    enviar('respuesta', { de: miId(), a: solicitud.de, ok });
+    solicitud = null; $('#solicitud').classList.remove('ver');
+  }
+  $('#sol-si').onclick = () => responder(true);
+  $('#sol-no').onclick = () => responder(false);
+  function alResponder(m) {
+    if (m.ok) {
+      if (m.a === miId()) enviar('carga', { portador: miId(), cargado: m.de });
+    } else {
+      mensajeSistema(m.ocupado ? '🤷 ' + nombreDe(m.de) + ' está ocupado' : '💔 ' + nombreDe(m.de) + ' rechazó a ' + nombreDe(m.a));
+      texto(m.de, '🙅 ¡NO!');
+      if (m.a === miId()) A.bip(200, 0.25, 'sawtooth', 0.04);
+    }
+  }
+  function alCargar(m) {
+    if (cargas.has(m.cargado) || llevaA(m.cargado) || cargas.has(m.portador) || llevaA(m.portador)) return;
+    cargas.set(m.cargado, m.portador);
+    const vc = pjs.get(m.cargado); if (vc) vc.efecto = null;
+    texto(m.portador, '💪 ¡Arriba!');
+    mensajeSistema('🏋️ ' + nombreDe(m.portador) + ' lleva cargado a ' + nombreDe(m.cargado));
+    botonBajar();
+  }
+  function alSoltar(m) {
+    const portador = cargas.get(m.cargado); if (!portador) return;
+    cargas.delete(m.cargado);
+    if (m.cargado === miId()) {
+      const pv = posDe(portador) || yoPos, vr = pjs.get(portador);
+      const r = vr ? vr.cr : 0;
+      yoPos.x = pv.x + Math.sin(r) * 0.9; yoPos.z = pv.z + Math.cos(r) * 0.9; Salon.colisionar(yoPos);
+      enviarPos(true);
+    }
+    const vc = pjs.get(m.cargado);
+    if (vc) {
+      vc.caida = 1.4;
+      if (m.cargado !== miId()) { const pv = posDe(portador); if (pv) { vc.cx = pv.x; vc.cz = pv.z; } }
+    }
+    if (!m.silencio) texto(m.cargado, '🦘');
+    botonBajar();
+  }
+  function botonBajar() {
+    const b = $('#b-bajar');
+    if (cargas.has(miId())) { b.textContent = '⬇️ Bajarme'; b.classList.add('ver'); }
+    else if (llevaA(miId())) { b.textContent = '⬇️ Soltar'; b.classList.add('ver'); }
+    else b.classList.remove('ver');
+  }
+  $('#b-bajar').onclick = () => {
+    if (cargas.has(miId())) return enviar('soltar', { cargado: miId() });
+    const c = [...cargas].find(([, p]) => p === miId());
+    if (c) enviar('soltar', { cargado: c[0] });
+  };
+
+  // ================= TEXTOS SOBRE LA CABEZA =================
+  function texto(id, txt) {
+    const v = pjs.get(id); if (!v) return;
+    const d = document.createElement('div'); d.className = 'texto-efecto'; d.textContent = txt;
+    v.etiqueta.appendChild(d); setTimeout(() => d.remove(), 2200);
+  }
   function mostrarEmote(id, e) {
     const v = pjs.get(id); if (!v) return;
     const b = document.createElement('div'); b.className = 'burbuja'; b.textContent = e;
     v.etiqueta.appendChild(b); setTimeout(() => b.remove(), 2400);
-    v.salto = 0.5; A.bip(500 + Math.random() * 400, 0.07, 'square', 0.03);
+    A.bip(500 + Math.random() * 400, 0.07, 'square', 0.03);
   }
   let ultimoEmote = 0;
   $$('#emotes button').forEach(b => b.onclick = () => {
     if (!canal || Date.now() - ultimoEmote < 700) return;
     ultimoEmote = Date.now();
-    canal.send({ type: 'broadcast', event: 'emote', payload: { id: A.perfil.id, e: b.dataset.e } });
+    enviar('emote', { id: miId(), e: b.dataset.e });
   });
+  $('#s-emo').onclick = () => { $('#emotes').classList.toggle('ver'); $('#s-emo').classList.toggle('on'); };
+
+  // ================= CHAT =================
+  function abrirChat() {
+    const barra = $('#chat-barra');
+    if (barra.classList.contains('ver')) { barra.classList.remove('ver'); $('#chat-input').blur(); return; }
+    barra.classList.add('ver'); $('#chat-input').focus();
+  }
+  $('#s-chat').onclick = abrirChat;
+  $('#chat-input').addEventListener('keydown', e => { if (e.key === 'Escape') { $('#chat-barra').classList.remove('ver'); e.target.blur(); } });
+  let ultimoChat = 0;
+  $('#chat-barra').onsubmit = e => {
+    e.preventDefault();
+    const inp = $('#chat-input'), txt = inp.value.trim().slice(0, 80);
+    if (!txt || !canal) return;
+    if (Date.now() - ultimoChat < 800) return A.toast('Más despacio 😅');
+    ultimoChat = Date.now();
+    enviar('chat', { id: miId(), txt });
+    inp.value = '';
+  };
+  function alChat(m) {
+    const txt = String(m.txt || '').slice(0, 80); if (!txt) return;
+    agregarLog(`<b>${esc(nombreDe(m.id))}:</b> ${esc(txt)}`);
+    const v = pjs.get(m.id);
+    if (v) {
+      const viejo = v.etiqueta.querySelector('.burbuja-chat'); if (viejo) viejo.remove();
+      const b = document.createElement('div'); b.className = 'burbuja-chat'; b.textContent = txt;
+      v.etiqueta.appendChild(b); setTimeout(() => b.remove(), 4500);
+    }
+    if (m.id !== miId()) A.bip(1320, 0.05, 'sine', 0.04);
+  }
+  function mensajeSistema(txt) { agregarLog(esc(txt), 'sistema'); }
+  function agregarLog(html, clase) {
+    const log = $('#chat-log');
+    const d = document.createElement('div'); if (clase) d.className = clase; d.innerHTML = html;
+    log.appendChild(d);
+    while (log.children.length > 6) log.firstChild.remove();
+    setTimeout(() => d.classList.add('viejo'), 12000);
+    setTimeout(() => d.remove(), 13500);
+  }
 
   // ================= INTERFAZ =================
   function pintarTodo() {
@@ -232,22 +666,11 @@
     const c = cfg();
     $('#s-cupo').textContent = jugadores.length + '/' + c.max;
     const modo = MODOS.find(m => m.id === c.modo), mapa = MAPAS.find(m => m.id === c.mapa);
-    $('#s-resumen').innerHTML = `
-      <div class="chip grande-chip">${modo.emoji} <b>${modo.nombre}</b><small>${modo.desc}</small></div>
-      <div class="chips">
-        <span class="chip">${mapa.emoji} ${mapa.nombre}</span>
-        <span class="chip">🔪 ${c.impostores} impostor${c.impostores > 1 ? 'es' : ''}</span>
-        <span class="chip">📋 ${c.misiones} misiones</span>
-        <span class="chip">🏃 x${c.velocidad}</span>
-        <span class="chip">🗳️ ${c.reunion} s</span>
-        <span class="chip">🏹 ${c.caza} s</span>
-      </div>`;
-    const host = soyHost();
-    $('#s-config').textContent = host ? '⚙️ Configurar' : '👀 Ver reglas';
+    $('#s-resumen').textContent = `${modo.emoji} ${modo.nombre} · ${mapa.emoji} ${mapa.nombre} · 🔪 ${c.impostores}`;
+    $('#s-config').title = soyHost() ? 'Configurar' : 'Ver reglas';
     const acc = $('#s-accion');
-    if (host) {
-      const otros = jugadores.filter(j => j.id !== A.perfil.id);
-      const faltan = otros.filter(j => !j.listo).length;
+    if (soyHost()) {
+      const faltan = jugadores.filter(j => j.id !== miId() && !j.listo).length;
       acc.textContent = faltan ? (faltan === 1 ? '⏳ Falta 1 listo' : `⏳ Faltan ${faltan} listos`) : '▶ EMPEZAR';
       acc.classList.toggle('verde', !faltan);
       acc.disabled = !!faltan;
@@ -264,12 +687,12 @@
     if (!sala) return;
     if (soyHost()) return empezar();
     yo.listo = !yo.listo; canal.track(yo);
-    canal.send({ type: 'broadcast', event: 'listo', payload: { id: A.perfil.id, listo: yo.listo } }); // aviso inmediato
+    enviar('listo', { id: miId(), listo: yo.listo }); // aviso inmediato
   };
 
-  async function empezar() {
+  function empezar() {
     if (jugadores.length < 3 && !confirm('Se recomienda jugar con 3 o más. ¿Empezar igual?')) return;
-    canal.send({ type: 'broadcast', event: 'inicio', payload: { config: cfg(), jugadores: jugadores.map(j => j.id) } });
+    enviar('inicio', { config: cfg(), jugadores: jugadores.map(j => j.id) });
   }
   function alIniciar() {
     // La partida 3D llega en la Parte 3; por ahora solo se anuncia.
@@ -288,16 +711,16 @@
     if (!sala) return;
     const web = /^https?:/.test(location.protocol);
     const url = web ? location.origin + location.pathname + '?sala=' + sala.codigo : '';
-    const texto = `¡Únete a mi partida de ZOOspechosos! 🐾 Código: ${sala.codigo}`;
+    const txt = `¡Únete a mi partida de ZOOspechosos! 🐾 Código: ${sala.codigo}`;
     try {
-      if (navigator.share) { await navigator.share({ title: 'ZOOspechosos', text: texto, url: url || undefined }); return; }
+      if (navigator.share) { await navigator.share({ title: 'ZOOspechosos', text: txt, url: url || undefined }); return; }
     } catch (e) { if (e.name === 'AbortError') return; }
-    try { await navigator.clipboard.writeText(url ? texto + ' ' + url : texto); A.toast('Código copiado 📋 ¡Pégalo en WhatsApp!'); }
+    try { await navigator.clipboard.writeText(url ? txt + ' ' + url : txt); A.toast('Código copiado 📋 ¡Pégalo en WhatsApp!'); }
     catch (e) { A.toast('Código: ' + sala.codigo); }
   };
 
   // ---------- configuración ----------
-  $('#s-config').onclick = () => { pintarConfig(); A.abrir('#m-config'); };
+  $('#s-config').onclick = $('#s-resumen').onclick = () => { pintarConfig(); A.abrir('#m-config'); };
   function pintarConfig() {
     const c = cfg(), host = soyHost(), dis = host ? '' : 'disabled';
     let h = `${host ? '' : '<p class="aviso">Solo el anfitrión 👑 puede cambiar esto.</p>'}<h4>Modo de juego</h4><div class="tarjetas">`;
@@ -330,34 +753,29 @@
   let guardarCfg = null;
   function cambiar(parcial) {
     sala.config = Object.assign(cfg(), parcial);
-    canal.send({ type: 'broadcast', event: 'config', payload: sala.config });
+    enviar('config', sala.config);
     pintarTodo();
     clearTimeout(guardarCfg); // guardamos en la base de datos sin saturarla
     guardarCfg = setTimeout(() => sb.from('zoo_salas').update({ config: sala.config, actualizado: new Date().toISOString() }).eq('codigo', sala.codigo).then(() => { }), 600);
   }
 
-  // ---------- tocar a un jugador (anfitrión) ----------
-  let jugadorSel = null;
-  function tocarJugador(id) {
-    if (!soyHost() || id === A.perfil.id) return;
-    const j = jugadores.find(x => x.id === id); if (!j) return;
-    jugadorSel = id; $('#mj-nombre').textContent = j.apodo; A.abrir('#m-jugador');
-  }
+  // ---------- anfitrión: expulsar / dar corona ----------
   $('#mj-expulsar').onclick = () => {
     if (!jugadorSel) return;
-    canal.send({ type: 'broadcast', event: 'expulsar', payload: { id: jugadorSel } });
-    $('#m-jugador').classList.remove('activa');
+    enviar('expulsar', { id: jugadorSel });
+    $('#m-interactuar').classList.remove('activa');
   };
   $('#mj-host').onclick = async () => {
     if (!jugadorSel) return;
     const { data: ok, error } = await sb.rpc('zoo_pasar_host', { cod: sala.codigo, nuevo: jugadorSel });
     if (error || !ok) return A.toast('No se pudo pasar la corona');
-    canal.send({ type: 'broadcast', event: 'host', payload: { id: jugadorSel } });
-    $('#m-jugador').classList.remove('activa');
+    enviar('host', { id: jugadorSel });
+    $('#m-interactuar').classList.remove('activa');
   };
 
   // ---------- link con ?sala=CODIGO ----------
   window.ZooSala = {
+    _dbg: { yoPos, pjs, enviarPos, cargas }, // para pruebas automáticas
     alEntrar() {
       const cod = new URLSearchParams(location.search).get('sala');
       if (!cod) return;

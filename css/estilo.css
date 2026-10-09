@@ -188,3 +188,48 @@ input::placeholder { color: rgba(255, 255, 255, .35); }
 #cuenta { position: fixed; inset: 0; display: none; place-items: center; z-index: 30; pointer-events: none; font-family: 'Lilita One'; font-size: clamp(60px, 22vw, 140px);
   color: var(--amarillo); text-shadow: 0 6px 0 #b3410e, 0 0 40px rgba(255, 61, 154, .8); background: rgba(8, 2, 20, .45); }
 #cuenta.ver { display: grid; animation: aparecer .2s; }
+
+/* ===== Salón VIP: controles ===== */
+.modo-chip { align-self: center; margin-top: 8px; background: var(--vidrio); border: 1px solid var(--borde); border-radius: 999px; padding: 6px 14px; font-weight: 900; font-size: 13px; backdrop-filter: blur(10px); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+#chat-log { position: fixed; left: 12px; top: calc(max(14px, env(safe-area-inset-top)) + 112px); width: min(260px, 66vw); display: flex; flex-direction: column; gap: 4px; pointer-events: none !important; }
+#chat-log div { background: rgba(10, 4, 22, .62); border-radius: 12px; padding: 5px 9px; font-size: 13px; font-weight: 700; line-height: 1.25; word-wrap: break-word; animation: aparecer .2s; transition: opacity 1s; }
+#chat-log div b { color: var(--amarillo); }
+#chat-log div.sistema { color: var(--cian); font-style: italic; }
+#chat-log div.viejo { opacity: 0; }
+.sala-abajo { margin-top: auto; display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; width: 100%; max-width: none; flex-direction: row; pointer-events: none !important; }
+.sala-abajo > * { pointer-events: auto; }
+#joy { width: 128px; height: 128px; border-radius: 50%; background: radial-gradient(circle, rgba(255, 255, 255, .1), rgba(255, 255, 255, .04)); border: 2px solid rgba(255, 255, 255, .2); position: relative; touch-action: none; flex: none; backdrop-filter: blur(4px); }
+#joy-bola { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; background: linear-gradient(135deg, var(--rosa), var(--morado)); box-shadow: 0 4px 14px rgba(0, 0, 0, .4), inset 0 -4px 0 rgba(0, 0, 0, .2); }
+.derecha { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; min-width: 0; }
+.redondos { display: flex; gap: 8px; }
+.redondo { width: 48px; height: 48px; border-radius: 50%; background: var(--vidrio); border: 1px solid var(--borde); font-size: 22px; backdrop-filter: blur(10px); }
+.redondo.on { background: var(--morado); }
+#s-accion { min-width: 164px; }
+.derecha .emotes { display: none; flex-wrap: wrap; justify-content: flex-end; width: 176px; }
+.derecha .emotes.ver { display: flex; }
+.derecha .emotes button { flex: 0 0 auto; width: 40px; }
+#chat-barra { position: fixed; left: 0; right: 0; bottom: 0; display: none; gap: 8px; padding: 10px 12px max(10px, env(safe-area-inset-bottom)); background: rgba(15, 6, 30, .95); border-top: 1px solid var(--borde); z-index: 15; }
+#chat-barra.ver { display: flex; }
+#chat-barra input { flex: 1; min-width: 0; }
+.burbuja-chat { position: absolute; left: 50%; bottom: 135%; transform: translateX(-50%); background: #fff; color: #2a1250; padding: 6px 10px; border-radius: 14px; font-size: 13px; font-weight: 800;
+  white-space: normal; width: max-content; max-width: 180px; text-align: center; animation: aparecer .2s; pointer-events: none; box-shadow: 0 4px 12px rgba(0, 0, 0, .35); }
+.burbuja-chat::after { content: ''; position: absolute; left: 50%; bottom: -6px; margin-left: -6px; border: 6px solid transparent; border-bottom: 0; border-top-color: #fff; }
+.texto-efecto { position: absolute; left: 50%; bottom: 160%; transform: translateX(-50%); white-space: nowrap; font-family: 'Lilita One'; font-size: 22px; color: var(--amarillo);
+  text-shadow: 0 3px 0 #b3410e, 0 0 14px rgba(255, 61, 154, .9); animation: efecto 2.2s ease forwards; pointer-events: none; }
+@keyframes efecto { 0% { transform: translate(-50%, 10px) scale(.3); opacity: 0; } 12% { transform: translate(-50%, 0) scale(1.35); opacity: 1; } 22% { transform: translate(-50%, 0) scale(1); } 80% { opacity: 1; } 100% { transform: translate(-50%, -30px); opacity: 0; } }
+.solicitud { position: fixed; left: 50%; top: calc(max(14px, env(safe-area-inset-top)) + 64px); transform: translate(-50%, -20px); width: min(340px, calc(100% - 32px)); background: var(--vidrio); border: 2px solid var(--amarillo);
+  border-radius: 18px; padding: 12px; backdrop-filter: blur(14px); z-index: 18; opacity: 0; pointer-events: none !important; transition: .25s; }
+.solicitud.ver { opacity: 1; transform: translate(-50%, 0); pointer-events: auto !important; }
+.solicitud p { margin: 0 0 10px; text-align: center; font-weight: 900; }
+#b-bajar { position: fixed; left: 50%; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 140px); transform: translateX(-50%); display: none; z-index: 5; }
+#b-bajar.ver { display: block; }
+.modal.abajo { align-items: flex-end; }
+.acciones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.acciones button { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 4px; border-radius: 14px; background: rgba(255, 255, 255, .08); font-weight: 800; font-size: 12px; line-height: 1.15; }
+.acciones button span { font-size: 30px; }
+.acciones button:active { background: rgba(255, 217, 61, .2); transform: scale(.96); }
+.solo-host { display: none; }
+.solo-host.ver { display: grid; }
+.sacudir { animation: sacudir .5s; }
+@keyframes sacudir { 20% { transform: translate(-8px, 4px); } 40% { transform: translate(7px, -5px); } 60% { transform: translate(-5px, 3px); } 80% { transform: translate(3px, -2px); } }
+@media (min-width: 700px) { .derecha .emotes { width: auto; } }

@@ -36,7 +36,7 @@
   const sol = new T.DirectionalLight('#ffffff', 1.6);
   sol.position.set(3, 7, 5); sol.castShadow = true;
   sol.shadow.mapSize.set(1024, 1024);
-  Object.assign(sol.shadow.camera, { left: -5, right: 5, top: 5, bottom: -5, near: 1, far: 20 });
+  Object.assign(sol.shadow.camera, { left: -9, right: 9, top: 9, bottom: -9, near: 1, far: 30 });
   sol.shadow.bias = -0.002;
   escena.add(sol);
   const luzRosa = new T.PointLight('#ff3d9a', 18, 12); escena.add(luzRosa);
@@ -143,6 +143,7 @@
   addEventListener('pointermove', e => { if (!arrastrando) return; const dx = e.clientX - ultimoX; ultimoX = e.clientX; giroVel = dx * 0.012; giroUsuario += giroVel; });
   addEventListener('pointerup', () => arrastrando = false);
 
+  const camLibre = { on: false };
   const reloj = new T.Clock();
   function bucle() {
     requestAnimationFrame(bucle);
@@ -152,7 +153,7 @@
     tmpV.set(vista.pos[0], vista.pos[1] * (0.9 + 0.1 * k), vista.pos[2] * k);
     camPos.lerp(tmpV, 1 - Math.pow(0.02, dt));
     camMira.lerp(tmpV.set(...vista.mira), 1 - Math.pow(0.02, dt));
-    camara.position.copy(camPos); camara.lookAt(camMira);
+    if (!camLibre.on) { camara.position.copy(camPos); camara.lookAt(camMira); } // en la sala la cámara la maneja sala.js
     // luces de fiesta
     luzRosa.position.set(Math.sin(t * 0.8) * 3.5, 2.5, Math.cos(t * 0.8) * 3.5);
     luzCian.position.set(Math.sin(t * 0.8 + Math.PI) * 3.5, 2.5, Math.cos(t * 0.8 + Math.PI) * 3.5);
@@ -198,7 +199,8 @@
     else quitarInvitados();
     if (nombre === 'sala' && miPj) { escena.remove(miPj); Zoo.liberar(miPj); miPj = null; }
     if (nombre === 'menu' && !miPj && perfil) ponerMiPj(perfil);
-    escenario.visible = aro.visible = nombre !== 'sala';
+    [piso, pista, escenario, aro, disco, cable, confeti].forEach(o => o.visible = nombre !== 'sala');
+    camLibre.on = nombre === 'sala';
   }
   function toast(txt, ms = 2600) {
     const t = $('#toast'); t.textContent = txt; t.classList.add('ver');
@@ -367,7 +369,7 @@
   // lo que necesitan los otros módulos (sala.js, juego…)
   const alCuadro = [];
   window.ZooApp = {
-    sb, escena, camara, renderer, ir, toast, bip, abrir, errorBonito, alCuadro,
+    sb, escena, camara, renderer, sol, ir, toast, bip, abrir, errorBonito, alCuadro,
     get perfil() { return perfil; },
     get pantalla() { return pantalla; },
   };

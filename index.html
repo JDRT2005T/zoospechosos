@@ -88,7 +88,7 @@
   </div>
 </section>
 
-<!-- sala de espera -->
+<!-- sala de espera (Salón VIP) -->
 <section id="p-sala" class="pantalla">
   <header class="barra">
     <button class="icono" id="s-salir" title="Salir">←</button>
@@ -97,17 +97,32 @@
     </button>
     <div class="cupo"><b id="s-cupo">1/10</b><small>jugadores</small></div>
   </header>
+  <button class="modo-chip" id="s-resumen"></button>
+  <div id="chat-log"></div>
   <div id="etiquetas"></div>
+  <div id="solicitud" class="solicitud">
+    <p id="sol-txt"></p>
+    <div class="fila"><button class="btn verde" id="sol-si">✅ ¡Súbeme!</button><button class="btn peligro" id="sol-no">❌ No</button></div>
+  </div>
+  <button class="btn" id="b-bajar">⬇️ Bajarme</button>
   <div class="sala-abajo">
-    <div class="emotes" id="emotes">
-      <button data-e="👋">👋</button><button data-e="😂">😂</button><button data-e="😱">😱</button><button data-e="😡">😡</button><button data-e="🤔">🤔</button><button data-e="❤️">❤️</button><button data-e="🔪">🔪</button>
-    </div>
-    <div class="resumen" id="s-resumen"></div>
-    <div class="fila">
-      <button class="btn sec" id="s-config">⚙️ Configurar</button>
+    <div id="joy"><div id="joy-bola"></div></div>
+    <div class="derecha">
+      <div class="emotes" id="emotes">
+        <button data-e="👋">👋</button><button data-e="😂">😂</button><button data-e="😱">😱</button><button data-e="😡">😡</button><button data-e="🤔">🤔</button><button data-e="❤️">❤️</button><button data-e="🔪">🔪</button>
+      </div>
+      <div class="redondos">
+        <button class="redondo" id="s-chat" title="Chat">💬</button>
+        <button class="redondo" id="s-emo" title="Reacciones">😀</button>
+        <button class="redondo" id="s-config" title="Configurar">⚙️</button>
+      </div>
       <button class="btn" id="s-accion">✋ Estoy listo</button>
     </div>
   </div>
+  <form id="chat-barra" autocomplete="off">
+    <input id="chat-input" maxlength="80" placeholder="Escribe un mensaje…" enterkeyhint="send">
+    <button class="btn" type="submit">➤</button>
+  </form>
 </section>
 
 <!-- ventanas -->
@@ -119,11 +134,21 @@
   </div>
 </div>
 
-<div class="modal" id="m-jugador">
+<div class="modal abajo" id="m-interactuar">
   <div class="tarjeta">
-    <h3 id="mj-nombre">Jugador</h3>
-    <button class="btn" id="mj-host">👑 Hacer anfitrión</button>
-    <button class="btn peligro" id="mj-expulsar">🚪 Expulsar de la sala</button>
+    <h3 id="mi-nombre">Jugador</h3>
+    <div class="acciones">
+      <button data-a="cargar"><span>🏋️</span>Llevar cargado</button>
+      <button data-a="jutsu"><span>🍑</span>Mil años de muerte</button>
+      <button data-a="abrazo"><span>🫂</span>Abrazar</button>
+      <button data-a="cinco"><span>🙌</span>Chocar los cinco</button>
+      <button data-a="empujar"><span>👊</span>Empujar</button>
+      <button data-a="bailar"><span>💃</span>Bailar juntos</button>
+    </div>
+    <div class="fila solo-host">
+      <button class="btn sec" id="mj-host">👑 Dar corona</button>
+      <button class="btn peligro" id="mj-expulsar">🚪 Expulsar</button>
+    </div>
     <button class="btn sec cerrar">Cerrar</button>
   </div>
 </div>
@@ -176,6 +201,7 @@
 <script src="vendor/supabase.js"></script>
 <script src="js/personaje.js"></script>
 <script src="js/app.js"></script>
+<script src="js/salon.js"></script>
 <script src="js/sala.js"></script>
 </body>
 </html>
