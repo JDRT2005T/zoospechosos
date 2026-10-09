@@ -123,9 +123,9 @@
 
   // cámara por pantalla
   const VISTAS = {
-    auth: { pos: [0, 2.6, 8.6], mira: [0, -0.3, -0.8] },
-    menu: { pos: [0, 1.7, 5.4], mira: [0, 0.75, 0] },
-    vestuario: { pos: [0, 1.6, 5.6], mira: [0, 0.15, 0] },
+    auth: { pos: [0, 2.6, 8.6], mira: [0, -0.3, -0.8], h: { pos: [2.7, 2.3, 7.4], mira: [2.7, 0.55, -0.8] } },
+    menu: { pos: [0, 1.7, 5.4], mira: [0, 0.75, 0], h: { pos: [0, 1.45, 5.2], mira: [0, 1.08, 0] } },
+    vestuario: { pos: [0, 1.6, 5.6], mira: [0, 0.15, 0], h: { pos: [1.35, 1.3, 4.6], mira: [1.35, 0.85, 0] } },
     sala: { pos: [0, 5.4, 10.8], mira: [0, 0.5, -0.9] },
   };
   let vista = VISTAS.auth;
@@ -150,9 +150,10 @@
     const dt = Math.min(reloj.getDelta(), 0.05), t = reloj.elapsedTime;
     // cámara suave
     const k = ajusteVertical();
-    tmpV.set(vista.pos[0], vista.pos[1] * (0.9 + 0.1 * k), vista.pos[2] * k);
+    const v = innerWidth > innerHeight && vista.h ? vista.h : vista; // en horizontal hay otro encuadre
+    tmpV.set(v.pos[0], v.pos[1] * (0.9 + 0.1 * k), v.pos[2] * k);
     camPos.lerp(tmpV, 1 - Math.pow(0.02, dt));
-    camMira.lerp(tmpV.set(...vista.mira), 1 - Math.pow(0.02, dt));
+    camMira.lerp(tmpV.set(...v.mira), 1 - Math.pow(0.02, dt));
     if (!camLibre.on) { camara.position.copy(camPos); camara.lookAt(camMira); } // en la sala la cámara la maneja sala.js
     // luces de fiesta
     luzRosa.position.set(Math.sin(t * 0.8) * 3.5, 2.5, Math.cos(t * 0.8) * 3.5);

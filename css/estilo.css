@@ -244,3 +244,65 @@ input::placeholder { color: rgba(255, 255, 255, .35); }
 .pasos .ic { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: rgba(255, 255, 255, .12); }
 /* app instalada: respetar la muesca del celular */
 @media (display-mode: standalone) { body { -webkit-touch-callout: none; } }
+
+/* ===== aviso: girar el celular ===== */
+#girar { position: fixed; inset: 0; z-index: 100; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center;
+  background: radial-gradient(circle at 50% 40%, #3b1670, var(--fondo)); padding: 24px; }
+#girar .cel { font-size: 72px; animation: girarCel 1.8s ease-in-out infinite; }
+#girar b { font-family: 'Lilita One'; font-weight: 400; font-size: 30px; color: var(--amarillo); text-shadow: 0 3px 0 #b3410e; }
+#girar small { color: var(--suave); font-weight: 800; font-size: 15px; }
+@keyframes girarCel { 0%, 20% { transform: rotate(0); } 50%, 80% { transform: rotate(-90deg); } 100% { transform: rotate(0); } }
+@media (orientation: portrait) and (pointer: coarse) { #girar { display: flex; } }
+
+/* ===== celular en horizontal ===== */
+@media (orientation: landscape) and (max-height: 560px) {
+  .pantalla { padding: max(10px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+  .logo { font-size: clamp(30px, 6.5vw, 50px); }
+
+  /* inicio de sesión: logo a la izquierda, formulario a la derecha */
+  #p-auth { flex-direction: row; align-items: stretch; justify-content: space-between; gap: 16px; }
+  #p-auth .logo-zona { margin-top: 4px; width: 50%; }
+  #p-auth .lema { font-size: 14px; }
+  #p-auth .auth { width: min(46%, 380px); margin: 0; align-self: center; max-height: 100%; overflow-y: auto; padding: 12px 14px; }
+  .auth .pestanas { margin-bottom: 8px; }
+  .auth .form { gap: 6px; }
+  .auth input { padding: 8px 12px; }
+  .auth label { font-size: 12px; gap: 3px; }
+  .auth .btn.grande { padding: 10px; font-size: 16px; margin-top: 2px; }
+  .auth .msg { margin-top: 6px; min-height: 0; }
+
+  /* menú: botones a los lados del muñeco */
+  .menu-centro { margin-top: 0; }
+  .menu-centro .logo { display: none; } /* en horizontal el logo taparía al muñeco */
+  .menu-centro .pildora { margin-top: 6px; padding: 6px 12px; font-size: 13px; }
+  .menu-abajo { flex-direction: row; align-items: flex-end; justify-content: space-between; max-width: none; gap: 12px; }
+  .menu-abajo .fila { order: -1; display: flex; flex-direction: column; gap: 10px; width: 170px; }
+  .btn.jugar { width: 230px; font-size: 26px; padding: 14px; }
+
+  /* vestuario: muñeco a la izquierda, opciones a la derecha */
+  #p-vestuario .barra h2 { text-align: left; padding-left: 4px; }
+  #p-vestuario .pista { position: fixed; left: 16px; bottom: 12px; width: 46%; margin: 0; }
+  #p-vestuario .hoja { position: fixed; right: max(16px, env(safe-area-inset-right)); top: 66px; height: calc(100% - 76px); margin: 0; width: min(50vw, 470px);
+    display: flex; flex-direction: column; padding: 10px; }
+  #p-vestuario .opciones { max-height: none; flex: 1; align-content: start; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); }
+  #p-vestuario .op { font-size: 24px; }
+
+  /* sala */
+  .codigo-sala { flex: 0 1 auto; flex-direction: row; gap: 10px; padding: 4px 14px; margin: 0 auto; }
+  .codigo-sala b { font-size: 24px; }
+  .cupo { display: flex; align-items: baseline; gap: 6px; padding: 8px 12px; }
+  .cupo b { font-size: 18px; }
+  .modo-chip { position: fixed; top: max(12px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); margin: 0; display: none; }
+  #chat-log { top: calc(max(10px, env(safe-area-inset-top)) + 60px); left: max(14px, env(safe-area-inset-left)); width: min(300px, 36vw); }
+  #joy { width: 118px; height: 118px; }
+  .solicitud { top: 64px; }
+  #b-bajar { bottom: 20px; }
+
+  /* ventanas */
+  .modal { padding: 10px; }
+  .modal .tarjeta { max-height: calc(100vh - 20px); overflow-y: auto; gap: 8px; padding: 14px; }
+  .tarjeta.ancha { max-width: 640px !important; }
+  .tarjeta h3 { margin-bottom: 4px; font-size: 22px; }
+  .acciones { grid-template-columns: repeat(6, 1fr); }
+  .modal.abajo .tarjeta { max-width: 640px; }
+}

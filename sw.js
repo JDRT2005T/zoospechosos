@@ -2,7 +2,7 @@
 // Páginas y código: primero internet (para tener siempre lo último), si no hay, lo guardado.
 // Librerías, íconos y fuentes: lo guardado primero (no cambian).
 // Nunca guarda nada de Supabase (cuentas, salas, tiempo real).
-const CACHE = 'zoo-v1'; // cambiar si cambian vendor/ o iconos/
+const CACHE = 'zoo-v2'; // cambiar si cambian vendor/ o iconos/
 const BASE = ['./', 'index.html', 'css/estilo.css', 'js/personaje.js', 'js/app.js', 'js/salon.js', 'js/sala.js', 'js/pwa.js',
   'vendor/three.min.js', 'vendor/supabase.js', 'manifest.webmanifest', 'iconos/icono-192.png', 'iconos/icono-512.png'];
 

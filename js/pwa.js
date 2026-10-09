@@ -33,3 +33,22 @@
     document.getElementById('m-instalar').classList.add('activa');
   }));
 })();
+
+// ZOOspechosos — siempre en horizontal
+(function () {
+  const movil = matchMedia('(pointer: coarse)').matches;
+  if (!movil) return;
+  const instalada = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  async function horizontal() {
+    if (innerWidth > innerHeight) return;
+    try {
+      // en el navegador, Android solo deja girar en pantalla completa (y después de un toque)
+      if (!instalada() && !document.fullscreenElement && document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+      }
+      if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape');
+    } catch (e) { /* iPhone u otros: se muestra el aviso de girar */ }
+  }
+  horizontal();
+  addEventListener('pointerdown', horizontal, true);
+})();
