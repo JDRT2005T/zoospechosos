@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1a0b2e">
+<title>ZOOspechosos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/estilo.css">
+</head>
+<body>
+<canvas id="escena"></canvas>
+
+<!-- carga -->
+<div id="carga" class="pantalla activa">
+  <div class="logo grande">ZOO<span>spechosos</span></div>
+  <div class="cargando"><i></i><i></i><i></i></div>
+</div>
+
+<!-- inicio de sesión / registro -->
+<section id="p-auth" class="pantalla">
+  <header class="logo-zona">
+    <div class="logo">ZOO<span>spechosos</span></div>
+    <p class="lema">¿Quién es el impostor del zoológico? 🐾</p>
+  </header>
+  <div class="tarjeta auth">
+    <div class="pestanas">
+      <button class="pestana activa" data-tab="entrar">Iniciar sesión</button>
+      <button class="pestana" data-tab="registro">Registrarse</button>
+    </div>
+    <form id="f-entrar" class="form activa" autocomplete="on">
+      <label>Usuario<input name="usuario" autocomplete="username" required minlength="3" maxlength="16" placeholder="tu_usuario"></label>
+      <label>Contraseña<input name="clave" type="password" autocomplete="current-password" required minlength="6" placeholder="••••••"></label>
+      <button class="btn grande" type="submit">Entrar</button>
+    </form>
+    <form id="f-registro" class="form" autocomplete="off">
+      <label>Usuario <small>(para entrar, sin espacios)</small><input name="usuario" required minlength="3" maxlength="16" pattern="[a-zA-Z0-9_]{3,16}" placeholder="ej: david_23"></label>
+      <label>Apodo <small>(lo que ven tus amigos)</small><input name="apodo" required minlength="2" maxlength="16" placeholder="ej: El Zorro"></label>
+      <label>Contraseña<input name="clave" type="password" autocomplete="new-password" required minlength="6" placeholder="mínimo 6 letras"></label>
+      <label>Repite la contraseña<input name="clave2" type="password" autocomplete="new-password" required minlength="6"></label>
+      <button class="btn grande" type="submit">Crear cuenta</button>
+    </form>
+    <p class="msg" id="auth-msg"></p>
+  </div>
+</section>
+
+<!-- menú principal -->
+<section id="p-menu" class="pantalla">
+  <header class="barra">
+    <div class="jugador">
+      <div class="avatar" id="m-avatar">🐱</div>
+      <div><b id="m-apodo">—</b><small id="m-usuario">@—</small></div>
+    </div>
+    <div class="monedas">🪙 <b id="m-monedas">0</b></div>
+    <button class="icono" id="b-ajustes" title="Ajustes">⚙️</button>
+  </header>
+  <div class="menu-centro">
+    <div class="logo">ZOO<span>spechosos</span></div>
+  </div>
+  <div class="menu-abajo">
+    <button class="btn jugar" id="b-jugar">▶ JUGAR</button>
+    <div class="fila">
+      <button class="btn sec" id="b-vestuario">👕 Vestuario</button>
+      <button class="btn sec" id="b-perfil">📊 Perfil</button>
+    </div>
+  </div>
+</section>
+
+<!-- vestuario -->
+<section id="p-vestuario" class="pantalla">
+  <header class="barra">
+    <button class="icono" id="b-volver">←</button>
+    <h2>Vestuario</h2>
+    <button class="btn chico" id="b-guardar">Guardar</button>
+  </header>
+  <p class="pista">👆 Arrastra para girar</p>
+  <div class="hoja">
+    <div class="cats" id="cats">
+      <button class="cat activa" data-cat="animal">🐾 Animal</button>
+      <button class="cat" data-cat="color">🎨 Color</button>
+      <button class="cat" data-cat="sombrero">🎩 Sombrero</button>
+      <button class="cat" data-cat="gafas">🕶️ Gafas</button>
+      <button class="cat" data-cat="accesorio">🎒 Extra</button>
+    </div>
+    <div class="opciones" id="opciones"></div>
+  </div>
+</section>
+
+<!-- sala de espera -->
+<section id="p-sala" class="pantalla">
+  <header class="barra">
+    <button class="icono" id="s-salir" title="Salir">←</button>
+    <button class="codigo-sala" id="s-codigo" title="Compartir">
+      <small>CÓDIGO DE SALA</small><b id="s-cod">-----</b><span>📤 Compartir</span>
+    </button>
+    <div class="cupo"><b id="s-cupo">1/10</b><small>jugadores</small></div>
+  </header>
+  <div id="etiquetas"></div>
+  <div class="sala-abajo">
+    <div class="emotes" id="emotes">
+      <button data-e="👋">👋</button><button data-e="😂">😂</button><button data-e="😱">😱</button><button data-e="😡">😡</button><button data-e="🤔">🤔</button><button data-e="❤️">❤️</button><button data-e="🔪">🔪</button>
+    </div>
+    <div class="resumen" id="s-resumen"></div>
+    <div class="fila">
+      <button class="btn sec" id="s-config">⚙️ Configurar</button>
+      <button class="btn" id="s-accion">✋ Estoy listo</button>
+    </div>
+  </div>
+</section>
+
+<!-- ventanas -->
+<div class="modal" id="m-config">
+  <div class="tarjeta ancha">
+    <h3>Configurar partida</h3>
+    <div class="config" id="config-campos"></div>
+    <button class="btn sec cerrar">Listo</button>
+  </div>
+</div>
+
+<div class="modal" id="m-jugador">
+  <div class="tarjeta">
+    <h3 id="mj-nombre">Jugador</h3>
+    <button class="btn" id="mj-host">👑 Hacer anfitrión</button>
+    <button class="btn peligro" id="mj-expulsar">🚪 Expulsar de la sala</button>
+    <button class="btn sec cerrar">Cerrar</button>
+  </div>
+</div>
+
+<div class="modal" id="m-jugar">
+  <div class="tarjeta">
+    <h3>¡A jugar!</h3>
+    <button class="btn grande" id="b-crear">➕ Crear sala</button>
+    <div class="separador"><span>o únete con un código</span></div>
+    <div class="codigo-fila">
+      <input id="i-codigo" maxlength="5" placeholder="CÓDIGO" autocomplete="off" autocapitalize="characters">
+      <button class="btn" id="b-unirse">Entrar</button>
+    </div>
+    <button class="btn sec cerrar">Cerrar</button>
+  </div>
+</div>
+
+<div class="modal" id="m-perfil">
+  <div class="tarjeta">
+    <h3>Tu perfil</h3>
+    <div class="stats">
+      <div><b id="s-partidas">0</b><small>Partidas</small></div>
+      <div><b id="s-victorias">0</b><small>Victorias</small></div>
+      <div><b id="s-porc">0%</b><small>Ganadas</small></div>
+    </div>
+    <label class="campo">Apodo<input id="i-apodo" maxlength="16"></label>
+    <button class="btn" id="b-apodo">Cambiar apodo</button>
+    <button class="btn sec cerrar">Cerrar</button>
+  </div>
+</div>
+
+<div class="modal" id="m-ajustes">
+  <div class="tarjeta">
+    <h3>Ajustes</h3>
+    <div class="opcion-fila"><span>Calidad gráfica</span>
+      <div class="seg" id="seg-calidad"><button data-v="baja">Baja</button><button data-v="alta">Alta</button></div>
+    </div>
+    <div class="opcion-fila"><span>Sonido</span>
+      <div class="seg" id="seg-sonido"><button data-v="no">No</button><button data-v="si">Sí</button></div>
+    </div>
+    <button class="btn peligro" id="b-salir">Cerrar sesión</button>
+    <button class="btn sec cerrar">Cerrar</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="cuenta"></div>
+
+<script src="vendor/three.min.js"></script>
+<script src="vendor/supabase.js"></script>
+<script src="js/personaje.js"></script>
+<script src="js/app.js"></script>
+<script src="js/sala.js"></script>
+</body>
+</html>
