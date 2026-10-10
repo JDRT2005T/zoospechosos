@@ -19,7 +19,9 @@
     { k: 'max', nombre: 'Jugadores máximos', min: 3, max: 10, paso: 1 },
     { k: 'impostores', nombre: 'Impostores', min: 1, max: 3, paso: 1 },
     { k: 'velocidad', nombre: 'Velocidad', min: 0.75, max: 1.5, paso: 0.25, fmt: v => 'x' + v },
-    { k: 'misiones', nombre: 'Misiones por jugador', min: 2, max: 8, paso: 1 },
+    { k: 'cortas', nombre: '⚡ Misiones cortas', min: 0, max: 6, paso: 1 },
+    { k: 'medias', nombre: '🔶 Misiones medianas', min: 0, max: 5, paso: 1 },
+    { k: 'largas', nombre: '🔷 Misiones largas', min: 0, max: 3, paso: 1 },
     { k: 'reunion', nombre: 'Tiempo de votación', min: 30, max: 120, paso: 15, fmt: v => v + ' s' },
     { k: 'caza', nombre: 'Tiempo de cacería', min: 60, max: 240, paso: 30, fmt: v => v + ' s' },
     { k: 'enfriamiento', nombre: 'Espera entre ataques', min: 15, max: 60, paso: 5, fmt: v => v + ' s' },
@@ -28,7 +30,7 @@
     { k: 'votoAnonimo', nombre: 'Votos anónimos' },
     { k: 'mostrarRol', nombre: 'Revelar rol al expulsar' },
   ];
-  const DEF = { modo: 'caceria', mapa: 'mansion', max: 10, impostores: 1, velocidad: 1, misiones: 4, reunion: 60, caza: 120, enfriamiento: 30, votoAnonimo: false, mostrarRol: true };
+  const DEF = { modo: 'caceria', mapa: 'mansion', max: 10, impostores: 1, velocidad: 1, cortas: 3, medias: 2, largas: 1, reunion: 60, caza: 120, enfriamiento: 30, votoAnonimo: false, mostrarRol: true };
 
   // ---------- estado ----------
   let sala = null, canal = null;
@@ -789,7 +791,7 @@
     const c = cfg();
     $('#s-cupo').textContent = jugadores.length + '/' + c.max;
     const modo = MODOS.find(m => m.id === c.modo), mapa = MAPAS.find(m => m.id === c.mapa);
-    $('#s-resumen').textContent = `${modo.emoji} ${modo.nombre} · ${mapa.emoji} ${mapa.nombre} · 🔪 ${c.impostores}`;
+    $('#s-resumen').textContent = `${modo.emoji} ${modo.nombre} · ${mapa.emoji} ${mapa.nombre} · 🔪 ${c.impostores} · 📋 ${c.cortas}/${c.medias}/${c.largas}`;
     $('#s-config').title = soyHost() ? 'Configurar' : 'Ver reglas';
     const acc = $('#s-accion');
     if (soyHost()) {
@@ -824,7 +826,8 @@
     mezcla.forEach((id, i) => roles[id] = i < nImp ? 'i' : 't');
     ids.forEach((id, i) => { const p = Mansion.salida(i, ids.length); salidas[id] = [+p.x.toFixed(2), +p.z.toFixed(2)]; });
     sb.from('zoo_salas').update({ estado: 'jugando', actualizado: new Date().toISOString() }).eq('codigo', sala.codigo).then(() => { });
-    enviar('inicio', { config: cfg(), roles, salidas });
+    const tareas = ZooMisiones.asignar(ids, cfg());
+    enviar('inicio', { config: cfg(), roles, salidas, tareas });
   }
   function alIniciar(datos) {
     if (vistiendo) cerrarVestidor();
@@ -880,6 +883,7 @@
       v = Math.max(n.min, Math.min(n.max, v));
       if (n.k === 'impostores' && v > Math.floor((c.max - 1) / 2)) return A.toast('Demasiados impostores para ' + c.max + ' jugadores');
       if (n.k === 'max' && v < jugadores.length) return A.toast('Ya hay ' + jugadores.length + ' en la sala');
+      if (['cortas', 'medias', 'largas'].includes(n.k) && Object.assign({}, c, { [n.k]: v }).cortas + Object.assign({}, c, { [n.k]: v }).medias + Object.assign({}, c, { [n.k]: v }).largas < 1) return A.toast('Debe haber al menos 1 misión');
       cambiar({ [n.k]: v });
     });
     cont.querySelectorAll('[data-s]').forEach(b => b.onclick = () => cambiar({ [b.dataset.s]: !c[b.dataset.s] }));

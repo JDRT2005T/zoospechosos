@@ -39,6 +39,7 @@
   function comenzar(d) {
     activo = true; terminando = false; roles = d.roles || {}; nInicial = Object.keys(roles).length;
     muertos.clear(); muriendo.clear(); limpiarRestos();
+    ZooMisiones.iniciar(d.tareas, roles, miId());
     enfriaHasta = Date.now() + 12000; // al principio el impostor espera un poco
     const s = d.salidas && d.salidas[miId()];
     const yp = S().yoPos;
@@ -81,6 +82,7 @@
     const vivosN = Object.keys(roles).filter(vivo).length;
     $('#h-vivos').textContent = '🐾 ' + vivosN + ' vivos';
     $('#b-matar').hidden = !imp || fan;
+    $('#h-barra').title = 'Misiones del equipo';
     $('#b-terminar').hidden = !S().soyHost();
   }
   const escapar = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -154,6 +156,7 @@
       $('#cine').classList.add('ver'); setTimeout(() => $('#cine').classList.remove('ver'), 2700);
     }
     muriendo.set(m.v, k);
+    if (m.v === miId()) ZooMisiones.cerrar();
     S().texto(m.a, '😏');
   }
 
@@ -370,6 +373,7 @@
     if (!activo) return;
     animarMuertes(dt);
     moverPedazos(dt);
+    ZooMisiones.cuadro(dt, t, S().yoPos, !soyImpostor() && !bloqueado() && !terminando, !mostrandoRol);
     Mansion.actualizarVista(S().yoPos.x, S().yoPos.z, dt, soyFantasma());
     const yp0 = S().yoPos, miCuarto = Mansion.cuartoDe(yp0.x, yp0.z), veTodo = soyFantasma();
     restos.forEach(r => {
@@ -401,6 +405,8 @@
   });
   let ultimoCuarto = null;
 
+  ZooMisiones.alTerminar = (mid, paso) => { if (activo) S().enviar('mision', { id: miId(), m: mid, paso }); };
+
   // ================= FIN DE LA PARTIDA =================
   function revisarFin() {
     if (!activo || terminando || !S().soyHost()) return;
@@ -408,7 +414,7 @@
     const vivosImp = Object.keys(roles).filter(id => presentes.has(id) && roles[id] === 'i' && vivo(id)).length;
     const vivosTrip = Object.keys(roles).filter(id => presentes.has(id) && roles[id] === 't' && vivo(id)).length;
     let gana = null;
-    if (vivosImp === 0) gana = 't';
+    if (vivosImp === 0 || ZooMisiones.progreso() >= 1) gana = 't';
     else if (nInicial >= 3 ? vivosImp >= vivosTrip : vivosTrip === 0) gana = 'i';
     if (gana) S().enviar('fin', { gana, roles });
   }
@@ -448,6 +454,7 @@
   // dejar todo como antes de la partida
   function terminar() {
     if (!activo) return;
+    ZooMisiones.terminar();
     activo = false; terminando = false; mostrandoRol = false;
     muriendo.forEach(k => { if (k.granada.parent) k.granada.parent.remove(k.granada); });
     muriendo.clear(); muertos.clear(); limpiarRestos(); anillo.visible = false;
@@ -497,6 +504,7 @@
   function bloqueado() {
     if (mostrandoRol || terminando) return true;
     if (muriendo.has(miId())) return true;
+    if (ZooMisiones.abierta()) return true;
     for (const k of muriendo.values()) if (k.a === miId() && k.t < 2.4) return true;
     return false;
   }
@@ -516,7 +524,8 @@
       v.etiqueta.classList.toggle('fant', muertos.has(id));
     },
     registrar(canal) {
-      canal.on('broadcast', { event: 'muerte' }, ({ payload }) => alMuerte(payload))
+      canal.on('broadcast', { event: 'mision' }, ({ payload }) => { if (!activo) return; ZooMisiones.alHecho(payload); if (S().soyHost()) setTimeout(revisarFin, 300); })
+        .on('broadcast', { event: 'muerte' }, ({ payload }) => alMuerte(payload))
         .on('broadcast', { event: 'fin' }, ({ payload }) => alFin(payload));
     },
     alCambiarJugadores() { pintarHud(); if (S().soyHost()) setTimeout(revisarFin, 500); },
