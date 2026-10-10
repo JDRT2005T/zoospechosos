@@ -363,6 +363,8 @@
 
   // lo que necesitan los otros módulos (sala.js, juego…)
   const alCuadro = [];
+  $('#version').textContent = window.ZOO_VERSION || '?';
+  console.log('ZOOspechosos versión', window.ZOO_VERSION);
   window.ZooApp = {
     sb, escena, camara, renderer, sol, ir, toast, bip, abrir, errorBonito, alCuadro,
     get perfil() { return perfil; },

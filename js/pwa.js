@@ -7,6 +7,11 @@
 
   if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) {
     const registrar = () => navigator.serviceWorker.register('sw.js').catch(() => { });
+    // cuando llega una versión nueva del service worker, recargar una vez para usarla
+    if (navigator.serviceWorker.controller) {
+      let recargado = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => { if (!recargado) { recargado = true; location.reload(); } });
+    }
     if (document.readyState === 'complete') registrar(); else addEventListener('load', registrar);
   }
 

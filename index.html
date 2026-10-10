@@ -202,6 +202,7 @@
       <div class="seg" id="seg-sonido"><button data-v="no">No</button><button data-v="si">Sí</button></div>
     </div>
     <button class="btn peligro" id="b-salir">Cerrar sesión</button>
+    <p class="version">Versión <b id="version"></b></p>
     <button class="btn sec cerrar">Cerrar</button>
   </div>
 </div>
@@ -236,13 +237,14 @@
 <div id="final"><div class="f-caja"><h2 id="f-tit"></h2><div id="f-lista"></div><p id="f-premio"></p><small>Volviendo al lobby…</small></div></div>
 
 <script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
-<script type="module" src="js/arranque.js"></script>
+<script>window.ZOO_VERSION = '3A.4'; // cambiar en cada actualización: obliga al celular a bajar los archivos nuevos</script>
+<script type="module" src="js/arranque.js?v=3A.4"></script>
 <script>
   // Plan B: navegadores viejos sin "importmap" cargan la versión simple (sin efectos)
   (function () {
     var cargar = function (lista) {
       if (!lista.length) return;
-      var s = document.createElement('script'); s.src = lista[0]; s.async = false;
+      var s = document.createElement('script'); s.src = lista[0] + '?v=' + window.ZOO_VERSION; s.async = false;
       s.onload = function () { cargar(lista.slice(1)); };
       document.body.appendChild(s);
     };

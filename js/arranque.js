@@ -14,7 +14,7 @@ window.POST = { EffectComposer, RenderPass, UnrealBloomPass, ShaderPass, OutputP
 const ARCHIVOS = ['vendor/supabase.js', 'js/personaje.js', 'js/particulas.js', 'js/app.js', 'js/salon.js', 'js/mansion.js', 'js/sala.js', 'js/juego.js', 'js/pwa.js'];
 const cargar = src => new Promise((ok, mal) => {
   const s = document.createElement('script');
-  s.src = src; s.async = false; s.onload = ok; s.onerror = () => mal(new Error('No cargó ' + src));
+  s.src = src + '?v=' + window.ZOO_VERSION; s.async = false; s.onload = ok; s.onerror = () => mal(new Error('No cargó ' + src));
   document.body.appendChild(s);
 });
 for (const src of ARCHIVOS) await cargar(src);

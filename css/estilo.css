@@ -389,3 +389,4 @@ input::placeholder { color: rgba(255, 255, 255, .35); }
 #frase { position: absolute; left: 50%; top: 16vh; transform: translateX(-50%); font-family: 'Lilita One'; font-size: clamp(26px, 6vw, 48px); color: var(--amarillo);
   text-shadow: 0 4px 0 #b3410e, 0 0 20px rgba(255, 61, 154, .8); opacity: 0; white-space: nowrap; }
 #frase.ver { animation: efecto 1.3s ease forwards; }
+.version { margin: 2px 0 0; text-align: center; font-size: 12px; color: var(--suave); font-weight: 700; }
