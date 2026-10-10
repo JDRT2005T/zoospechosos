@@ -7,6 +7,7 @@ import { ShaderPass } from '../vendor/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from '../vendor/jsm/postprocessing/OutputPass.js';
 import { RoomEnvironment } from '../vendor/jsm/environments/RoomEnvironment.js';
 
+window.__zooModulo = true; // los módulos cargaron bien (el plan B no hace falta)
 window.THREE = THREE;
 window.POST = { EffectComposer, RenderPass, UnrealBloomPass, ShaderPass, OutputPass, RoomEnvironment };
 

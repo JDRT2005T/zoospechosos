@@ -22,11 +22,11 @@
   const camara = new T.PerspectiveCamera(40, 1, 0.1, 100);
 
   // ---- efectos de imagen (solo calidad alta): brillo neón + viñeta ----
-  const P = window.POST;
+  const P = window.POST; // puede faltar en celulares viejos (plan B sin efectos)
   const gl = renderer.capabilities;
   const hdr = gl.isWebGL2 && (renderer.extensions.has('EXT_color_buffer_float') || renderer.extensions.has('EXT_color_buffer_half_float'));
   let composer = null, bloom = null;
-  if (hdr) {
+  if (hdr && P) {
     composer = new P.EffectComposer(renderer, new T.WebGLRenderTarget(2, 2, { type: T.HalfFloatType, samples: 4 }));
     composer.addPass(new P.RenderPass(escena, camara));
     bloom = new P.UnrealBloomPass(new T.Vector2(256, 256), 0.7, 0.45, 1.6); // solo brilla lo que pasa de 1 (los neones)
@@ -40,7 +40,7 @@
   }
   // reflejos solo para las cosas metálicas (bolas disco)
   const pmrem = new T.PMREMGenerator(renderer);
-  window.reflejos = pmrem.fromScene(new P.RoomEnvironment(renderer), 0.04).texture;
+  window.reflejos = P ? pmrem.fromScene(new P.RoomEnvironment(renderer), 0.04).texture : null;
   // material de neón: color más fuerte que 1 para que el bloom lo haga brillar
   window.neon = (hex, k) => new T.MeshBasicMaterial({ color: new T.Color(hex).multiplyScalar(k || 5) });
 

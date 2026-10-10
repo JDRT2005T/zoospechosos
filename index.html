@@ -222,5 +222,36 @@
 
 <script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
 <script type="module" src="js/arranque.js"></script>
+<script>
+  // Plan B: navegadores viejos sin "importmap" cargan la versión simple (sin efectos)
+  (function () {
+    var cargar = function (lista) {
+      if (!lista.length) return;
+      var s = document.createElement('script'); s.src = lista[0]; s.async = false;
+      s.onload = function () { cargar(lista.slice(1)); };
+      document.body.appendChild(s);
+    };
+    var planB = function () { if (!window.__zooModulo && !window.THREE) cargar(['vendor/three.min.js', 'vendor/supabase.js', 'js/personaje.js', 'js/particulas.js', 'js/app.js', 'js/salon.js', 'js/sala.js', 'js/pwa.js']); };
+    var sabe = window.HTMLScriptElement && HTMLScriptElement.supports;
+    if (sabe && !HTMLScriptElement.supports('importmap')) planB();
+    else if (!sabe) setTimeout(planB, 4000); // navegador que no sabe decir: esperamos al moderno
+    // Rescate: si en 10 s no arrancó, ofrecer borrar lo guardado y reintentar
+    setTimeout(function () {
+      if (window.ZooApp) return;
+      var c = document.getElementById('carga');
+      var b = document.createElement('button');
+      b.className = 'btn'; b.textContent = '🔄 Reintentar';
+      b.onclick = function () {
+        var fin = function () { location.reload(); };
+        Promise.all([
+          navigator.serviceWorker ? navigator.serviceWorker.getRegistrations().then(function (r) { return Promise.all(r.map(function (x) { return x.unregister(); })); }) : 0,
+          window.caches ? caches.keys().then(function (k) { return Promise.all(k.map(function (n) { return caches.delete(n); })); }) : 0
+        ]).then(fin, fin);
+      };
+      var p = document.createElement('p'); p.className = 'lema'; p.textContent = 'Está tardando mucho… revisa tu internet o toca reintentar';
+      c.appendChild(p); c.appendChild(b);
+    }, 10000);
+  })();
+</script>
 </body>
 </html>
