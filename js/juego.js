@@ -48,7 +48,7 @@
     // fundido a negro → mostrar rol → la mansión
     const f = $('#fundido'); f.classList.add('ver');
     setTimeout(() => {
-      Salon.grupo.visible = false; Mansion.grupo.visible = true;
+      Salon.grupo.visible = false; Mansion.grupo.visible = true; Mansion.reiniciarVista();
       $('#p-sala').classList.add('en-juego');
       S().reiniciarCamara(); S().enviarPos(true);
       pintarHud();
@@ -369,6 +369,7 @@
     if (!activo) return;
     animarMuertes(dt);
     moverPedazos(dt);
+    Mansion.actualizarVista(S().yoPos.x, S().yoPos.z, dt, soyFantasma());
     restos.forEach(r => {
       if (r.userData.crece && r.scale.x < 1) r.scale.setScalar(Math.min(1, r.scale.x + dt * 1.2));
       if (r.userData.aparece && r.scale.x < 1) r.scale.setScalar(Math.min(1, r.scale.x + dt * 8));
@@ -378,7 +379,7 @@
     if (soyImpostor() && !soyFantasma()) {
       const yp = S().yoPos; let mejor = 1.8;
       S().pjs.forEach((v, id) => {
-        if (id === miId() || !vivo(id) || rol(id) === 'i') return;
+        if (id === miId() || !vivo(id) || rol(id) === 'i' || !mismoCuarto(v)) return; // no se mata a través de paredes
         const d = Math.hypot(v.cx - yp.x, v.cz - yp.z);
         if (d < mejor) { mejor = d; objetivo = id; }
       });
@@ -472,6 +473,13 @@
     if (confirm('¿Terminar la partida y volver al lobby?')) S().enviar('fin', { gana: null, roles });
   });
 
+  // ver solo lo de tu cuarto (o alguien pegadito en la puerta)
+  function mismoCuarto(v) {
+    const yp = S().yoPos;
+    if (Math.hypot(v.cx - yp.x, v.cz - yp.z) < 1.6) return true;
+    return Mansion.cuartoDe(v.cx, v.cz) === Mansion.cuartoDe(yp.x, yp.z);
+  }
+
   // cámara de cine (como en Among Us) para el impostor y la víctima
   function cine() {
     for (const k of muriendo.values()) {
@@ -498,6 +506,8 @@
     // los vivos no ven a los fantasmas
     visible: id => !muertos.has(id) || soyFantasma(),
     efecto(v, id, dt, t) {
+      // ¿está en mi mismo cuarto? (los fantasmas ven a todos)
+      if (id !== miId() && !soyFantasma() && !muriendo.has(id) && !mismoCuarto(v)) { v.obj.visible = false; v.etiqueta.style.visibility = 'hidden'; }
       if (v.fantasma && v.obj) { v.obj.position.y = 0.35 + Math.sin(t * 2 + id.length) * 0.12; v.obj.userData.piernas.forEach(l => l.rotation.x = 0.4); }
       v.etiqueta.classList.toggle('imp', soyImpostor() && rol(id) === 'i');
       v.etiqueta.classList.toggle('fant', muertos.has(id));
