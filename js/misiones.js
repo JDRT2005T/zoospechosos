@@ -82,7 +82,8 @@
   function pintarLista() {
     const l = $('#h-tareas'); if (!l) return;
     const imp = roles[miId] === 'i';
-    l.innerHTML = (imp ? '<small>Tareas falsas (finge 😈)</small>' : '') + (tareas[miId] || []).map(mid => {
+    const lista = tareas[miId] || [], listas = lista.filter(mid => terminada(miId, mid)).length;
+    l.innerHTML = `<b class="ht-cab">📋 Misiones ${listas}/${lista.length} ${l.classList.contains('mini') ? '▸' : '▾'}</b>` + (imp ? '<small>Tareas falsas (finge 😈)</small>' : '') + lista.map(mid => {
       const m = CAT[mid], h = pasosHechos(miId, mid), ok = h >= m.pasos.length;
       const sig = ok ? '' : Mansion.AREAS[m.pasos[Math.min(h, m.pasos.length - 1)].k].n;
       return `<div class="${ok ? 'ok' : ''}">${m.e} ${m.n}${m.pasos.length > 1 ? ` (${Math.min(h, m.pasos.length)}/${m.pasos.length})` : ''}${ok ? ' ✔' : `<small>📍 ${sig}</small>`}</div>`;
@@ -91,15 +92,16 @@
     $('#h-barra i').style.width = Math.round(p * 100) + '%';
   }
 
+  $('#h-tareas').addEventListener('click', () => { $('#h-tareas').classList.toggle('mini'); pintarLista(); }); // tocar para plegar/desplegar
   function iniciar(t, r, id) {
     tareas = t || {}; roles = r || {}; hechos = {}; miId = id; activo = true;
     rehacerMarcas();
   }
-  function terminar() { activo = false; extras = []; abrirMapa(false); cerrar(); marcas.clear(); pendientes = []; flechaG.visible = false; $('#b-usar').hidden = true; }
+  function terminar() { activo = false; extras = []; fuentes = {}; abrirMapa(false); cerrar(); marcas.clear(); pendientes = []; flechaG.visible = false; $('#b-usar').hidden = true; }
 
   // ---------- estaciones extra (arreglar sabotajes) ----------
-  let extras = []; // [{ x, z, e, tit, j, o, alListo }]
-  function setExtras(lista) { extras = lista || []; }
+  let extras = [], fuentes = {}; // [{ x, z, e, tit, j, o, alListo, ok }] — cada módulo pone las suyas (sabotajes, cacería…)
+  function setExtras(lista, clave) { fuentes[clave || 'sab'] = lista || []; extras = [].concat(...Object.values(fuentes)); }
 
   // ---------- cada cuadro: flecha, botón USAR ----------
   let cerca = null;
@@ -124,7 +126,7 @@
   $('#b-usar').addEventListener('click', () => {
     if (!cerca || abierta()) return;
     if (cerca.mid) abrir(cerca);
-    else abrirJuego(cerca.tit, cerca.j, cerca.o, cerca.alListo);
+    else abrirJuego(cerca.tit, cerca.j, cerca.o, cerca.alListo, cerca.ok);
   });
 
   // ---------- panel del minijuego ----------
@@ -142,13 +144,13 @@
       const hecho = actual; setTimeout(() => { cerrar(); if (alTerminar) alTerminar(hecho.mid, hecho.paso + 1); }, 650);
     });
   }
-  function abrirJuego(tit, j, o, alListo) {
+  function abrirJuego(tit, j, o, alListo, ok) {
     actual = { extra: true };
     $('#mj-tit').textContent = tit;
     const caja = $('#mj-caja'); caja.innerHTML = '';
     $('#mision').classList.add('ver');
     JUEGOS[j](caja, o, () => {
-      caja.insertAdjacentHTML('beforeend', '<div class="mj-listo">✔ ¡ARREGLADO!</div>');
+      caja.insertAdjacentHTML('beforeend', `<div class="mj-listo">${ok || '✔ ¡ARREGLADO!'}</div>`);
       A.bip(880, 0.12); setTimeout(() => A.bip(1320, 0.15), 110);
       setTimeout(() => { cerrar(); alListo(); }, 650);
     });
@@ -355,6 +357,8 @@
     CAT, asignar, iniciar, terminar, cuadro, progreso, alHecho, abierta, cerrar, setExtras,
     set alTerminar(f) { alTerminar = f; },
     pendientesMias: () => pendientes.length,
+    // cuántos pasos de misión hizo un jugador (dan munición en la cacería)
+    pasosDe: pid => Object.values(hechos[pid] || {}).reduce((a, b) => a + b, 0),
     _dbg: { abrir: (mid, paso) => abrir({ mid, paso: paso || 0 }), completarTodo: () => { (tareas[miId] || []).forEach(mid => { for (let p = pasosHechos(miId, mid); p < CAT[mid].pasos.length; p++) alTerminar(mid, p + 1); }); }, get pendientes() { return pendientes; } }, // para pruebas
   };
 })();

@@ -435,6 +435,20 @@
   // ---------- bucle del salón ----------
   const proy = new T.Vector3(), camPos = new T.Vector3(), camMira = new T.Vector3(), tmp = new T.Vector3();
   let camaraLista = false, sacudida = 0, botonCerca = false;
+  // cámara de la partida: más lejos = se ve más de la casa (la niebla y las sombras se estiran con ella)
+  const ZOOM = { cerca: 1, normal: 1.3, lejos: 1.6 };
+  let vistaK = 0;
+  function ajustarVista(k) {
+    if (Math.abs(k - vistaK) < 0.01) return;
+    vistaK = k;
+    if (A.escena.fog) { A.escena.fog.near = 12 * k; A.escena.fog.far = 30 * k; }
+    const c = A.sol.shadow.camera; c.left = c.bottom = -9 * k; c.right = c.top = 9 * k; c.far = 30 * k; c.updateProjectionMatrix();
+  }
+  function vistaNormal() { if (!vistaK) return; ajustarVista(1); vistaK = 0; }
+  $('#b-zoom').addEventListener('click', () => {
+    const orden = ['cerca', 'normal', 'lejos'], sig = orden[(orden.indexOf(A.zoom) + 1) % 3];
+    A.zoom = sig; A.toast('🎥 Cámara: ' + { cerca: 'cerca', normal: 'normal', lejos: 'lejos' }[sig], 1200);
+  });
   const angulo = (a, b, k) => { let d = b - a; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return a + d * k; };
 
   A.alCuadro.push((dt, t) => {
@@ -509,10 +523,12 @@
       tmp.set(px + off, 1.7, pz + 5.0); mx = px + off; my = horiz ? 0.95 : 0.35; mz = pz;
     } else if (enJuego() && J().cine()) { // escena de la granada: cámara de lado y cerquita
       const c = J().cine(); tmp.set(c.pos[0], c.pos[1], c.pos[2]); mx = c.mira[0]; my = c.mira[1]; mz = c.mira[2];
-    } else if (enJuego()) { // en la mansión: cámara más cerca y el sol (sombras) sigue al jugador
-      tmp.set(px, 7.4 * z, pz + 5.6 * z); mx = px; my = 0.3; mz = pz - 0.6;
+    } else if (enJuego()) { // en la mansión: el sol (sombras) sigue al jugador; la distancia se elige en Ajustes o con 🔍
+      const k = z * (ZOOM[A.zoom] || ZOOM.lejos);
+      tmp.set(px, 7.4 * k, pz + 5.6 * k); mx = px; my = 0.3; mz = pz - 0.6 * k;
+      ajustarVista(k);
       A.sol.position.set(px + 3, 7, pz + 5); A.sol.target.position.set(px, 0, pz); A.sol.target.updateMatrixWorld();
-    } else tmp.set(px * 0.85, 8.4 * z, pz + 6.2 * z);
+    } else { tmp.set(px * 0.85, 8.4 * z, pz + 6.2 * z); vistaNormal(); }
     if (!camaraLista) { camPos.copy(tmp); camMira.set(mx, my, mz); camaraLista = true; }
     camPos.lerp(tmp, 1 - Math.exp(-dt * 5));
     camMira.lerp(tmp.set(mx, my, mz), 1 - Math.exp(-dt * 5));

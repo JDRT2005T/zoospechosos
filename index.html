@@ -112,7 +112,7 @@
     <div class="h-izq"><div id="h-rol" class="h-rol"></div><div id="h-tareas"></div></div>
     <div id="h-barra" title="Progreso de la tripulación"><span>📋 Misiones del equipo</span><i></i></div>
     <div id="h-cuarto"></div>
-    <div class="h-der"><span id="h-vivos"></span><button class="icono" id="b-mapa" title="Mapa">🗺️</button><button class="icono" id="b-terminar" title="Terminar partida" hidden>⏹</button></div>
+    <div class="h-der"><span id="h-vivos"></span><button class="icono" id="b-zoom" title="Alejar / acercar la cámara">🔍</button><button class="icono" id="b-mapa" title="Mapa">🗺️</button><button class="icono" id="b-terminar" title="Terminar partida" hidden>⏹</button></div>
     <button id="b-sabotaje" class="b-chico" hidden><span>⚠️</span><b></b><small>SABOTEAR</small></button>
     <button id="b-vent" class="b-chico" hidden><span>🕳️</span><small>ENTRAR</small></button>
     <button id="b-reportar" class="b-chico" hidden><span>📢</span><b></b><small>REPORTAR</small></button>
@@ -201,6 +201,9 @@
     <div class="opcion-fila"><span>Calidad gráfica</span>
       <div class="seg" id="seg-calidad"><button data-v="baja">Baja</button><button data-v="alta">Alta</button></div>
     </div>
+    <div class="opcion-fila"><span>Cámara en la partida 🎥</span>
+      <div class="seg" id="seg-camara"><button data-v="cerca">Cerca</button><button data-v="normal">Normal</button><button data-v="lejos">Lejos</button></div>
+    </div>
     <div class="opcion-fila"><span>Sangre 🩸</span>
       <div class="seg" id="seg-sangre"><button data-v="no">No</button><button data-v="si">Sí</button></div>
     </div>
@@ -277,7 +280,7 @@
 <div id="final"><div class="f-caja"><h2 id="f-tit"></h2><div id="f-lista"></div><p id="f-premio"></p><small>Volviendo al lobby…</small></div></div>
 
 <script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
-<script>window.ZOO_VERSION = '3C.0'; // cambiar en cada actualización: obliga al celular a bajar los archivos nuevos</script>
+<script>window.ZOO_VERSION = '3C.1'; // cambiar en cada actualización: obliga al celular a bajar los archivos nuevos</script>
 <script type="module" src="js/arranque.js?v=3B.5"></script>
 <script>
   // Plan B: navegadores viejos sin "importmap" cargan la versión simple (sin efectos)

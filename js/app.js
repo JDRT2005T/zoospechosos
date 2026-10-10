@@ -13,6 +13,7 @@
   let calidad = guardado('zoo-calidad', 'alta');
   let sonido = guardado('zoo-sonido', 'si');
   let sangre = guardado('zoo-sangre', 'si');
+  let zoom = guardado('zoo-camara', 'lejos'); // qué tan lejos va la cámara en la partida
 
   // ================= ESCENA 3D =================
   const canvas = $('#escena');
@@ -357,7 +358,8 @@
   $('#b-salir').onclick = async () => { await sb.auth.signOut(); perfil = null; $('#m-ajustes').classList.remove('activa'); ir('auth'); };
 
   function pintarSeg(id, val) { $$(id + ' button').forEach(b => b.classList.toggle('activa', b.dataset.v === val)); }
-  pintarSeg('#seg-calidad', calidad); pintarSeg('#seg-sonido', sonido); pintarSeg('#seg-sangre', sangre);
+  pintarSeg('#seg-calidad', calidad); pintarSeg('#seg-sonido', sonido); pintarSeg('#seg-sangre', sangre); pintarSeg('#seg-camara', zoom);
+  $$('#seg-camara button').forEach(b => b.onclick = () => { ZooApp.zoom = b.dataset.v; });
   $$('#seg-sangre button').forEach(b => b.onclick = () => { sangre = b.dataset.v; guardar('zoo-sangre', sangre); pintarSeg('#seg-sangre', sangre); });
   $$('#seg-calidad button').forEach(b => b.onclick = () => { calidad = b.dataset.v; guardar('zoo-calidad', calidad); pintarSeg('#seg-calidad', calidad); aplicarCalidad(); });
   $$('#seg-sonido button').forEach(b => b.onclick = () => { sonido = b.dataset.v; guardar('zoo-sonido', sonido); pintarSeg('#seg-sonido', sonido); });
@@ -372,6 +374,8 @@
     get pantalla() { return pantalla; },
     get calidad() { return calidad; },
     get sangre() { return sangre; },
+    get zoom() { return zoom; },
+    set zoom(v) { zoom = v; guardar('zoo-camara', v); pintarSeg('#seg-camara', v); },
     get sonido() { return sonido; },
   };
 

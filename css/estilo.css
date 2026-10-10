@@ -574,7 +574,42 @@ body.rn-exp #etiquetas, body.rn-exp #hud, body.rn-exp .sala-abajo { display: non
   .rn-nom b { font-size: 13px; }
   .rn-conf button { width: 32px; height: 32px; font-size: 15px; }
   .rn-pie { min-height: 34px; } #rn-saltar { padding: 6px 12px; font-size: 14px; }
-  #b-reportar { width: 70px; height: 70px; right: calc(max(20px, env(safe-area-inset-right)) + 100px); bottom: calc(max(20px, env(safe-area-inset-bottom)) + 96px); }
-  #b-reportar span { font-size: 26px; }
   .rn-i-ico { font-size: 60px; }
+}
+
+/* ===== lista de misiones plegable ===== */
+#h-tareas { pointer-events: auto; cursor: pointer; }
+#h-tareas .ht-cab { display: block; font-family: 'Lilita One'; font-weight: 400; font-size: 12px; color: var(--amarillo); }
+#h-tareas.mini > div, #h-tareas.mini > small { display: none; }
+
+/* ===== HUD de la partida compacto en el celular acostado ===== */
+@media (orientation: landscape) and (max-height: 560px) {
+  #p-sala.en-juego .sala-abajo { padding-bottom: 0; }
+  .h-izq { gap: 4px; max-width: 28vw; }
+  .h-rol { font-size: 13px; padding: 4px 9px; border-radius: 10px; }
+  .h-rol small { font-size: 9.5px; }
+  #h-tareas { font-size: 10px; padding: 4px 7px; line-height: 1.15; max-height: calc(100vh - 150px); }
+  #h-tareas div { padding: 1px 0; }
+  #h-tareas div small { display: inline; margin-left: 4px; font-size: 9px; }
+  #h-barra { width: min(240px, 30vw); height: 18px; }
+  #h-barra span { font-size: 10px; line-height: 14px; }
+  #p-sala.en-juego #h-cuarto { top: calc(max(8px, env(safe-area-inset-top)) + 22px); font-size: 11px; padding: 3px 10px; }
+  .h-der { gap: 5px; }
+  .h-der .icono { width: 34px; height: 34px; font-size: 15px; border-radius: 10px; }
+  #h-vivos { padding: 6px 8px; font-size: 11px; border-radius: 10px; }
+  #p-sala.en-juego #joy { width: 96px; height: 96px; }
+  #p-sala.en-juego #joy-bola { width: 42px; height: 42px; margin: -21px 0 0 -21px; }
+  #b-usar, #b-matar { width: 78px; height: 78px; right: max(14px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); border-width: 3px; }
+  #b-usar span, #b-matar span { font-size: 28px; }
+  #b-usar small, #b-matar small { font-size: 11px; }
+  #b-matar b { font-size: 32px; }
+  .b-chico { width: 58px; height: 58px; }
+  .b-chico span { font-size: 21px; }
+  .b-chico small { font-size: 8.5px; }
+  .b-chico b { font-size: 24px; }
+  #b-sabotaje { right: max(24px, env(safe-area-inset-right)); bottom: calc(max(12px, env(safe-area-inset-bottom)) + 88px); }
+  #b-vent { right: calc(max(14px, env(safe-area-inset-right)) + 88px); bottom: max(22px, env(safe-area-inset-bottom)); }
+  #b-reportar { width: 62px; height: 62px; right: calc(max(14px, env(safe-area-inset-right)) + 84px); bottom: calc(max(12px, env(safe-area-inset-bottom)) + 78px); }
+  #b-reportar span { font-size: 22px; }
+  #sab-banner { top: calc(max(8px, env(safe-area-inset-top)) + 46px); font-size: 11px; padding: 4px 10px; }
 }

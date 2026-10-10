@@ -254,7 +254,7 @@
     [-2, 0, 2].forEach(dz => { cilindro(0.06, 0.4, std('#ffd93d'), r.cx, 1.0, r.cz + dz, false); const l = new T.Mesh(new T.SphereGeometry(0.05, 8, 6), neon('#ffb347', 4)); l.position.set(r.cx, 1.25, r.cz + dz); grupo.add(l); });
   })(R.D);
   (function (r) { // SALA DE JUEGOS
-    [-3, -1.5, 0].forEach((dx, i) => {
+    [2.5, 4, 5.5].forEach((dx, i) => {
       caja(0.9, 1.9, 0.8, std(['#ff3d9a', '#2ee6d6', '#ffd93d'][i]), r.cx + dx, 0.95, r.z0 + 0.6, true);
       const p = caja(0.6, 0.6, 0.04, neon('#2ee6d6', 2), r.cx + dx, 1.35, r.z0 + 1.02, false);
       animados.push(t => p.material.color.setHSL((t * 0.3 + i * 0.3) % 1, 0.9, 0.6).multiplyScalar(2));
@@ -369,7 +369,7 @@
     luces: panel('E', r => [r.cx + 1.4, r.z0 + 0.5], '#ffd93d', 'Tablero de luces'),
     alarma: panel('G', r => [r.x1 - 1.0, r.z0 + 0.5], '#ff2e2e', 'Panel de alarma'),
     codigo: panel('O', r => [r.x0 + 2.8, r.z0 + 0.5], '#2ee6d6', 'Pantalla del código'),
-    teclado: panel('C', r => [r.cx - 1.5, r.z0 + 0.5], '#5effa0', 'Teclado de oxígeno'),
+    teclado: panel('C', r => [r.cx + 2.5, r.z0 + 0.5], '#5effa0', 'Teclado de oxígeno'),
   };
 
   // luces (pocas, para que vaya bien en celular)
@@ -434,6 +434,41 @@
     }
     return p;
   }
+  // ---------- CACERÍA: jaula del Sótano y mesa de armas del Garaje ----------
+  const JAULA = { x: R.S.x1 - 3.5, z: R.S.z1 - 2.5, r: 1.1 };
+  JAULA.palanca = { x: JAULA.x - 2.7, z: JAULA.z + 1.0 };
+  (function () {
+    const oro = std('#ffcf4d', { metalness: 0.8, roughness: 0.25 });
+    cilindro(JAULA.r + 0.15, 0.12, std('#5a4630'), JAULA.x, 0.06, JAULA.z, false, 24);
+    for (let i = 0; i < 16; i++) {
+      const a = i / 16 * Math.PI * 2;
+      const b = new T.Mesh(new T.CylinderGeometry(0.035, 0.035, 2.1, 6), oro);
+      b.position.set(JAULA.x + Math.cos(a) * JAULA.r, 1.1, JAULA.z + Math.sin(a) * JAULA.r); b.castShadow = true; grupo.add(b);
+    }
+    [0.2, 2.1].forEach(y => { const ar = new T.Mesh(new T.TorusGeometry(JAULA.r, 0.05, 6, 32), oro); ar.rotation.x = Math.PI / 2; ar.position.set(JAULA.x, y, JAULA.z); grupo.add(ar); });
+    const domo = new T.Mesh(new T.SphereGeometry(JAULA.r, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), new T.MeshStandardMaterial({ color: '#ffcf4d', metalness: 0.8, roughness: 0.25, wireframe: true }));
+    domo.position.set(JAULA.x, 2.1, JAULA.z); grupo.add(domo);
+    const gancho = new T.Mesh(new T.TorusGeometry(0.18, 0.04, 6, 16), oro); gancho.position.set(JAULA.x, 3.25, JAULA.z); grupo.add(gancho);
+    cajas.push([JAULA.x - JAULA.r, JAULA.z - JAULA.r, JAULA.x + JAULA.r, JAULA.z + JAULA.r]);
+    // la palanca para abrirla
+    const P = JAULA.palanca;
+    caja(0.5, 0.9, 0.35, std('#6b6b78', { metalness: 0.5 }), P.x, 0.45, P.z, true);
+    const brazo = new T.Group(); brazo.position.set(P.x, 0.95, P.z); grupo.add(brazo);
+    const palo = new T.Mesh(new T.CylinderGeometry(0.04, 0.04, 0.6, 8), std('#333')); palo.position.y = 0.3; brazo.add(palo);
+    const bola = new T.Mesh(new T.SphereGeometry(0.1, 10, 8), neon('#ff2e2e', 2.5)); bola.position.y = 0.62; brazo.add(bola);
+    brazo.rotation.z = 0.6; JAULA.brazo = brazo;
+    animados.push((t, dt) => { if (JAULA.jalar > 0) { JAULA.jalar = Math.max(0, JAULA.jalar - (dt || 0.016)); brazo.rotation.z = JAULA.jalar > 0.6 ? -0.6 : 0.6 - JAULA.jalar * 2; } });
+  })();
+  const TALLER = { x: R.T.x1 - 0.6, z: R.T.cz + 1.2 }; // pegada a la pared derecha (lejos de las puertas)
+  (function () {
+    caja(0.9, 0.9, 2.6, std('#8b5a3c'), TALLER.x, 0.45, TALLER.z, true);
+    caja(1.0, 0.08, 2.7, std('#5a3a22'), TALLER.x, 0.92, TALLER.z, false);
+    const borde = caja(0.04, 0.04, 2.7, neon('#5effa0', 2.5), TALLER.x - 0.5, 0.97, TALLER.z, false);
+    [-0.8, 0, 0.8].forEach((dz, i) => caja(0.2, 0.12, 0.28, std(['#9aa5b1', '#ffb703', '#e63946'][i], { metalness: 0.5 }), TALLER.x, 1.02, TALLER.z + dz, false));
+    const holo = new T.Mesh(new T.OctahedronGeometry(0.28), neon('#5effa0', 2)); holo.position.set(TALLER.x, 1.7, TALLER.z); grupo.add(holo);
+    animados.push(t => { holo.rotation.y = t * 2; holo.position.y = 1.7 + Math.sin(t * 3) * 0.08; borde.material.color.setRGB(0.5, 2.2 + Math.sin(t * 4) * 0.4, 1.2); });
+  })();
+
   // lugares de salida alrededor de la mesa del vestíbulo
   function salida(i, n) {
     const a = -Math.PI / 2 + (i / Math.max(1, n)) * Math.PI * 2;
@@ -441,7 +476,7 @@
   }
 
   window.Mansion = {
-    grupo, colisionar, limites, salida, cuartoDe, zonaDe, MX, MZ, RECT, AREAS, PLANO, VENTS, REDES, PANELES,
+    grupo, colisionar, limites, salida, cuartoDe, zonaDe, MX, MZ, RECT, AREAS, PLANO, VENTS, REDES, PANELES, JAULA, TALLER,
     puertas(k, cerrar) { hojas.forEach(h => { if (h.k === k) { h.cerrada = cerrar; h.m.visible = cerrar; } }); },
     abrirTodas() { hojas.forEach(h => { h.cerrada = false; h.m.visible = false; }); },
     animarVent(id) { const v = VENTS[id]; if (v) v.abre = 1; },
