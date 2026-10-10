@@ -94,7 +94,8 @@
     if (Date.now() < enfriaHasta || !objetivo) return;
     const v = S().pjs.get(objetivo); if (!v) return;
     enfriaHasta = Date.now() + S().cfg().enfriamiento * 1000;
-    S().enviar('muerte', { a: miId(), v: objetivo, x: +v.cx.toFixed(2), z: +v.cz.toFixed(2), r: +v.cr.toFixed(2), tipo: (S().yo && S().yo.muerte) || 'granada' });
+    const yp = S().yoPos;
+    S().enviar('muerte', { a: miId(), v: objetivo, x: +v.cx.toFixed(2), z: +v.cz.toFixed(2), r: +v.cr.toFixed(2), ax: +yp.x.toFixed(2), az: +yp.z.toFixed(2), tipo: (S().yo && S().yo.muerte) || 'granada' });
   });
 
   // ---- escenario de cine (lejos del mapa): ahí ven la escena el impostor y la víctima ----
@@ -116,6 +117,23 @@
   })();
 
   // ================= ANIMACIONES DE MUERTE =================
+  const ACERCA = 0.8; // segundos que tarda el impostor en llegar hasta la víctima
+  const suaveM = x => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); };
+  // un objeto sale de la mano y vuela hasta un punto de la víctima (en coordenadas de la víctima)
+  function volar(pr, uv, t, t0, t1, punto) {
+    if (t < t0 || !uv) return;
+    if (!pr.vuela) {
+      pr.vuela = true;
+      const p0 = new T.Vector3(); pr.g.getWorldPosition(p0); pr.raiz.updateMatrixWorld(); pr.raiz.worldToLocal(p0);
+      quitar(pr.g); pr.raiz.add(pr.g); pr.g.position.copy(p0); pr.p0 = p0.clone();
+    }
+    if (t > t1) return;
+    const raizV = uv.cuerpo.parent; raizV.updateMatrixWorld();
+    const p1 = raizV.localToWorld(punto.clone()); pr.raiz.worldToLocal(p1);
+    const q = suaveM((t - t0) / (t1 - t0));
+    pr.g.position.lerpVectors(pr.p0, p1, q); pr.g.position.y += Math.sin(q * Math.PI) * 0.25;
+    pr.g.rotation.x = q * 6; pr.g.rotation.z = q * 3;
+  }
   const toon = c => new T.MeshToonMaterial({ color: c });
   function hacerBrillo() {
     const b = new T.Mesh(new T.SphereGeometry(0.62, 18, 14), new T.MeshBasicMaterial({ color: '#ff1a1a', transparent: true, opacity: 0, depthWrite: false }));
@@ -181,8 +199,8 @@
 
   const ANIMS = {
     granada: {
-      nombre: 'Granada', frente: false, tMuerte: 2.1, tFin: 2.6,
-      montar(ua, uv) { const g = hacerGranada(); ua.brazos[1].add(g); const b = hacerBrillo(); uv.cuerpo.add(b); return { g, b, todo: [g, b] }; },
+      nombre: 'Granada', frente: false, tMuerte: 2.1, tFin: 2.6, lento: [0.45, 0.85],
+      montar(ua, uv, raiz) { const g = hacerGranada(); ua.brazos[1].add(g); const b = hacerBrillo(); uv.cuerpo.add(b); return { g, b, raiz, todo: [g, b] }; },
       posar(ua, uv, k, t, pr, alto) {
         if (ua) {
           const br = ua.brazos[1];
@@ -190,6 +208,7 @@
           else if (t < 0.8) { const q = (t - 0.5) / 0.3; br.rotation.z = 2.45 - 2.1 * q; br.rotation.x = -1.15 * q; ua.cuerpo.rotation.x = 0.25 * q; }
           else if (t < 2.4) { ua.brazos.forEach((b, i) => { b.rotation.z = (i ? 1 : -1) * 2.7; b.rotation.x = -0.4; }); ua.cuerpo.rotation.x = -0.15; }
         }
+        volar(pr, uv, t, 0.55, 0.78, new T.Vector3(0, 0.55, -0.52));
         pr.g.visible = t < 0.78;
         if (uv) {
           if (t >= 0.78 && t < 1.08) { alto(Math.sin((t - 0.78) / 0.3 * Math.PI) * 0.45); uv.ojos.forEach(o => o.scale.set(1.6, 1.6, 1)); }
@@ -217,6 +236,7 @@
 
     martillo: {
       nombre: 'Martillazo', frente: false, tMuerte: 1.7, tFin: 2.2,
+      lento: [0.6, 0.8],
       montar(ua) { const g = hacerMartillo(); ua.brazos[1].add(g); return { g, todo: [g] }; },
       posar(ua, uv, k, t, pr, alto) {
         if (ua) {
@@ -287,7 +307,7 @@
     },
 
     varilla: {
-      nombre: 'La varilla', frente: false, tMuerte: 2.15, tFin: 2.6,
+      nombre: 'La varilla', frente: false, tMuerte: 2.15, tFin: 2.6, lento: [0.45, 0.95],
       montar(ua, uv) { const g = hacerVarilla(); ua.brazos[1].add(g); g.position.set(0, -0.4, 0.05); g.rotation.x = Math.PI; return { g, uv, todo: [g] }; },
       posar(ua, uv, k, t, pr, alto) {
         const g = pr.g;
@@ -352,18 +372,24 @@
     else { vv.cx = vv.tx = m.x; vv.cz = vv.tz = m.z; vv.cr = vv.tr = m.r; }
     if (m.a === miId()) { yp.x = kx; yp.z = kz; yp.r = kr; S().enviarPos(true); }
     else { va.cx = va.tx = kx; va.cz = va.tz = kz; va.cr = va.tr = kr; }
-    const k = { tipo, a: m.a, v: m.v, x: m.x, z: m.z, r: m.r, t: 0, ev: [], murio: false };
-    k.pm = D.montar(va.obj.userData, vv.obj.userData); // en el mapa (lo ven los demás)
+    const k = { tipo, a: m.a, v: m.v, x: m.x, z: m.z, r: m.r, t: -ACERCA, ev: [], murio: false };
+    // camino del impostor: desde donde estaba hasta su lugar junto a la víctima
+    let sx = m.ax, sz = m.az;
+    if (sx == null || Math.hypot(sx - kx, sz - kz) < 0.6) { sx = kx - (D.frente ? -fx : fx) * 1.6; sz = kz - (D.frente ? -fz : fz) * 1.6; }
+    k.desde = { x: sx, z: sz }; k.hasta = { x: kx, z: kz, r: kr };
+    if (m.a === miId()) { yp.x = sx; yp.z = sz; } else { va.cx = va.tx = sx; va.cz = va.tz = sz; }
+    k.pm = D.montar(va.obj.userData, vv.obj.userData, A.escena); // en el mapa (lo ven los demás)
     // en el escenario de cine (lo ven el impostor y la víctima)
     if (m.a === miId() || m.v === miId()) {
       k.ca = Zoo.crear(ropaDe(m.a)); k.cv = Zoo.crear(ropaDe(m.v));
       k.cvx = SET.x + (D.frente ? 0.65 : -0.35);
-      k.cv.position.set(k.cvx - SET.x, 0, 0); k.ca.position.set(k.cvx - SET.x + (D.frente ? -1.3 : 0.75), 0, 0);
+      k.caFin = k.cvx - SET.x + (D.frente ? -1.3 : 0.75); k.caIni = k.caFin + (D.frente ? -2.2 : 2.2);
+      k.cv.position.set(k.cvx - SET.x, 0, 0); k.ca.position.set(k.caIni, 0, 0);
       k.cv.rotation.y = -Math.PI / 2; k.ca.rotation.y = D.frente ? Math.PI / 2 : -Math.PI / 2;
       set.add(k.ca); set.add(k.cv); set.visible = true;
       S().reiniciarCamara(); // la cámara salta directo al escenario
-      k.pc = D.montar(k.ca.userData, k.cv.userData);
-      $('#cine').classList.add('ver'); setTimeout(() => $('#cine').classList.remove('ver'), D.tFin * 1000 + 100);
+      k.pc = D.montar(k.ca.userData, k.cv.userData, set);
+      $('#cine').classList.add('ver'); setTimeout(() => $('#cine').classList.remove('ver'), (D.tFin + ACERCA) * 1000 + 600);
     }
     muriendo.set(m.v, k);
     if (m.v === miId()) ZooMisiones.cerrar();
@@ -372,11 +398,23 @@
   // ---- animación paso a paso ----
   function animarMuertes(dt) {
     muriendo.forEach((k, vid) => {
-      k.t += dt; const t = k.t, D = ANIMS[k.tipo];
+      const D = ANIMS[k.tipo];
+      const lento = D.lento && k.t >= D.lento[0] && k.t < D.lento[1];
+      k.t += lento ? dt * 0.4 : dt; const t = k.t; // 🐢 cámara lenta en el momento clave
       const va = S().pjs.get(k.a), vv = S().pjs.get(k.v);
       const yp = S().yoPos;
       if (k.v === miId()) { yp.x = k.x; yp.z = k.z; yp.r = k.r; }
       else if (vv) { vv.cx = vv.tx = k.x; vv.cz = vv.tz = k.z; vv.cr = vv.tr = k.r; }
+      if (t < 0) { // el impostor se acerca caminando (a escondidas 🤫)
+        const q = suaveM(1 + t / ACERCA), h = k.hasta;
+        const x = k.desde.x + (h.x - k.desde.x) * q, z = k.desde.z + (h.z - k.desde.z) * q;
+        const r = q < 0.85 ? Math.atan2(h.x - k.desde.x, h.z - k.desde.z) : h.r;
+        if (k.a === miId()) { yp.x = x; yp.z = z; yp.r = r; } else if (va) { va.cx = va.tx = x; va.cz = va.tz = z; va.cr = va.tr = r; }
+        if (va && va.obj) Zoo.animar(va.obj, dt, 'caminar');
+        if (k.ca) { k.ca.position.x = k.caIni + (k.caFin - k.caIni) * q; Zoo.animar(k.ca, dt, 'caminar'); Zoo.animar(k.cv, dt, 'quieto'); }
+        return;
+      }
+      if (!k.llego) { k.llego = true; const h = k.hasta; if (k.a === miId()) { yp.x = h.x; yp.z = h.z; yp.r = h.r; S().enviarPos(true); } else if (va) { va.cx = va.tx = h.x; va.cz = va.tz = h.z; va.cr = va.tr = h.r; } if (k.ca) k.ca.position.x = k.caFin; }
       if (!k.murio) D.posar(va && va.obj && va.obj.userData, vv && vv.obj && vv.obj.userData, k, t, k.pm, a => { if (vv) vv.alto = a; });
       else if (va && va.obj) D.posar(va.obj.userData, null, k, t, k.pm, () => { });
       if (k.ca) {
@@ -669,7 +707,7 @@
     for (const k of muriendo.values()) {
       if (!k.ca) continue;
       const atras = k.murio ? 1.6 : 0;
-      const alto = k.tipo === 'varilla' ? 0.45 : 0, lejos = k.tipo === 'varilla' || k.tipo === 'pastel' ? 0.9 : 0, cx = k.tipo === 'pastel' ? SET.x : SET.x - 0.05;
+      const alto = k.tipo === 'varilla' ? 0.45 : 0, abierta = k.t < 0 ? 1.8 * (-k.t / ACERCA) : 0, lejos = (k.tipo === 'varilla' || k.tipo === 'pastel' ? 0.9 : 0) + abierta, cx = (k.tipo === 'pastel' ? SET.x : SET.x - 0.05) + (k.ca ? (k.ca.position.x - k.caFin) * 0.4 : 0);
       return { pos: [cx, 1.45 + alto + atras * 0.4, SET.z + 4.4 + lejos + atras], mira: [cx, 0.95 + alto, SET.z] };
     }
     return null;
