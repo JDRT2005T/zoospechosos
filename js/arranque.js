@@ -11,7 +11,7 @@ window.__zooModulo = true; // los módulos cargaron bien (el plan B no hace falt
 window.THREE = THREE;
 window.POST = { EffectComposer, RenderPass, UnrealBloomPass, ShaderPass, OutputPass, RoomEnvironment };
 
-const ARCHIVOS = ['vendor/supabase.js', 'js/personaje.js', 'js/particulas.js', 'js/app.js', 'js/salon.js', 'js/sala.js', 'js/pwa.js'];
+const ARCHIVOS = ['vendor/supabase.js', 'js/personaje.js', 'js/particulas.js', 'js/app.js', 'js/salon.js', 'js/mansion.js', 'js/sala.js', 'js/juego.js', 'js/pwa.js'];
 const cargar = src => new Promise((ok, mal) => {
   const s = document.createElement('script');
   s.src = src; s.async = false; s.onload = ok; s.onerror = () => mal(new Error('No cargó ' + src));

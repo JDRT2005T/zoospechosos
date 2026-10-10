@@ -12,6 +12,7 @@
   const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { } };
   let calidad = guardado('zoo-calidad', 'alta');
   let sonido = guardado('zoo-sonido', 'si');
+  let sangre = guardado('zoo-sangre', 'si');
 
   // ================= ESCENA 3D =================
   const canvas = $('#escena');
@@ -355,7 +356,8 @@
   $('#b-salir').onclick = async () => { await sb.auth.signOut(); perfil = null; $('#m-ajustes').classList.remove('activa'); ir('auth'); };
 
   function pintarSeg(id, val) { $$(id + ' button').forEach(b => b.classList.toggle('activa', b.dataset.v === val)); }
-  pintarSeg('#seg-calidad', calidad); pintarSeg('#seg-sonido', sonido);
+  pintarSeg('#seg-calidad', calidad); pintarSeg('#seg-sonido', sonido); pintarSeg('#seg-sangre', sangre);
+  $$('#seg-sangre button').forEach(b => b.onclick = () => { sangre = b.dataset.v; guardar('zoo-sangre', sangre); pintarSeg('#seg-sangre', sangre); });
   $$('#seg-calidad button').forEach(b => b.onclick = () => { calidad = b.dataset.v; guardar('zoo-calidad', calidad); pintarSeg('#seg-calidad', calidad); aplicarCalidad(); });
   $$('#seg-sonido button').forEach(b => b.onclick = () => { sonido = b.dataset.v; guardar('zoo-sonido', sonido); pintarSeg('#seg-sonido', sonido); });
 
@@ -366,6 +368,8 @@
     get perfil() { return perfil; },
     get pantalla() { return pantalla; },
     get calidad() { return calidad; },
+    get sangre() { return sangre; },
+    get sonido() { return sonido; },
   };
 
   // ================= INICIO =================

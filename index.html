@@ -106,6 +106,13 @@
     </div>
     <div class="opciones" id="v-opciones"></div>
   </div>
+  <!-- HUD de la partida -->
+  <div id="hud">
+    <div id="h-rol" class="h-rol"></div>
+    <div id="h-cuarto"></div>
+    <div class="h-der"><span id="h-vivos"></span><button class="icono" id="b-terminar" title="Terminar partida" hidden>⏹</button></div>
+    <button id="b-matar" hidden><span>💣</span><b></b><small>MATAR</small></button>
+  </div>
   <div class="sala-abajo">
     <div id="joy"><div id="joy-bola"></div></div>
     <div class="derecha">
@@ -188,6 +195,9 @@
     <div class="opcion-fila"><span>Calidad gráfica</span>
       <div class="seg" id="seg-calidad"><button data-v="baja">Baja</button><button data-v="alta">Alta</button></div>
     </div>
+    <div class="opcion-fila"><span>Sangre 🩸</span>
+      <div class="seg" id="seg-sangre"><button data-v="no">No</button><button data-v="si">Sí</button></div>
+    </div>
     <div class="opcion-fila"><span>Sonido</span>
       <div class="seg" id="seg-sonido"><button data-v="no">No</button><button data-v="si">Sí</button></div>
     </div>
@@ -219,6 +229,11 @@
 
 <div id="toast"></div>
 <div id="cuenta"></div>
+<div id="fundido"></div>
+<div id="cine"><i></i><i></i><div id="frase"></div></div>
+<div id="revelar"><div id="r-ico"></div><div id="r-tit"></div><div id="r-sub"></div><div id="r-equipo"></div></div>
+<div id="aviso-muerte"><b>💥 ¡TE EXPLOTARON!</b><span>Ahora eres un fantasma 👻<br><small>Puedes atravesar paredes y solo te ven otros fantasmas</small></span></div>
+<div id="final"><div class="f-caja"><h2 id="f-tit"></h2><div id="f-lista"></div><p id="f-premio"></p><small>Volviendo al lobby…</small></div></div>
 
 <script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
 <script type="module" src="js/arranque.js"></script>
@@ -231,7 +246,7 @@
       s.onload = function () { cargar(lista.slice(1)); };
       document.body.appendChild(s);
     };
-    var planB = function () { if (!window.__zooModulo && !window.THREE) cargar(['vendor/three.min.js', 'vendor/supabase.js', 'js/personaje.js', 'js/particulas.js', 'js/app.js', 'js/salon.js', 'js/sala.js', 'js/pwa.js']); };
+    var planB = function () { if (!window.__zooModulo && !window.THREE) cargar(['vendor/three.min.js', 'vendor/supabase.js', 'js/personaje.js', 'js/particulas.js', 'js/app.js', 'js/salon.js', 'js/mansion.js', 'js/sala.js', 'js/juego.js', 'js/pwa.js']); };
     var sabe = window.HTMLScriptElement && HTMLScriptElement.supports;
     if (sabe && !HTMLScriptElement.supports('importmap')) planB();
     else if (!sabe) setTimeout(planB, 4000); // navegador que no sabe decir: esperamos al moderno

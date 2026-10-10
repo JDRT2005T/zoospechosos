@@ -49,6 +49,10 @@
   const llevaA = id => [...cargas.values()].includes(id); // ¿id lleva a alguien cargado?
 
   A.escena.add(Salon.grupo);
+  // la partida (juego.js) usa este mismo movimiento, pero en la Mansión
+  const J = () => window.ZooJuego;
+  const enJuego = () => !!(J() && J().activo);
+  const mundo = () => enJuego() ? Mansion : Salon;
 
   // ================= ENTRAR / SALIR =================
   $('#b-crear').onclick = async () => {
@@ -110,7 +114,9 @@
       .on('broadcast', { event: 'expulsar' }, ({ payload }) => {
         if (payload.id === miId()) { salirLocal(); A.toast('Te sacaron de la sala 🚪'); }
       })
-      .on('broadcast', { event: 'inicio' }, () => alIniciar())
+      .on('broadcast', { event: 'inicio' }, ({ payload }) => alIniciar(payload))
+    if (J()) J().registrar(canal);
+    canal
       .subscribe(estado => {
         if (estado === 'SUBSCRIBED') { canal.track(yo); enviarPos(true); }
         if (estado === 'CHANNEL_ERROR' || estado === 'TIMED_OUT') A.toast('Problema de conexión con la sala 📶');
@@ -135,6 +141,7 @@
     salirLocal();
   }
   function salirLocal() {
+    if (J()) J().salir(); // por si estaba en plena partida
     clearInterval(latido);
     if (canal) { canal.untrack(); sb.removeChannel(canal); canal = null; }
     sala = null; jugadores = []; cargas.clear();
@@ -184,8 +191,9 @@
     jugadores = nuevos;
     // limpiar cargas de gente que se fue
     [...cargas].forEach(([c, p]) => { if (!ahora.has(c) || !ahora.has(p)) alSoltar({ cargado: c, silencio: true }); });
-    revisarColor();
+    if (!enJuego()) revisarColor();
     pintarTodo();
+    if (enJuego()) J().alCambiarJugadores();
     if (vistiendo) pintarVestidor();
   }
 
@@ -210,7 +218,7 @@
   addEventListener('keydown', e => {
     if (A.pantalla !== 'sala' || escribiendo()) return;
     teclas.add(e.key.toLowerCase());
-    if (e.key === 'Enter') { e.preventDefault(); abrirChat(); }
+    if (e.key === 'Enter' && !enJuego()) { e.preventDefault(); abrirChat(); }
   });
   addEventListener('keyup', e => teclas.delete(e.key.toLowerCase()));
   addEventListener('blur', () => teclas.clear());
@@ -231,7 +239,7 @@
   function enviarPos(forzar) {
     if (!canal) return;
     const ahora = performance.now();
-    if (!forzar && ahora - ultimoEnvio < 110) return;
+    if (!forzar && ahora - ultimoEnvio < (enJuego() ? 150 : 110)) return; // en la partida mandamos menos (ahorra mensajes)
     ultimoEnvio = ahora;
     enviar('mov', { i: miId(), x: +yoPos.x.toFixed(2), z: +yoPos.z.toFixed(2), r: +yoPos.r.toFixed(2) });
   }
@@ -357,7 +365,7 @@
       if (e.n === 'empujar_victima' && t < 0.35) mover(e.dir.x * 1.7 * dt / 0.35, e.dir.z * 1.7 * dt / 0.35);
     }
   }
-  function mover(dx, dz) { yoPos.x += dx; yoPos.z += dz; Salon.colisionar(yoPos); enviarPos(); }
+  function mover(dx, dz) { yoPos.x += dx; yoPos.z += dz; mundo().colisionar(yoPos); enviarPos(); }
 
   // ---------- bucle del salón ----------
   const proy = new T.Vector3(), camPos = new T.Vector3(), camMira = new T.Vector3(), tmp = new T.Vector3();
@@ -366,17 +374,17 @@
 
   A.alCuadro.push((dt, t) => {
     if (A.pantalla !== 'sala' || !sala) return;
-    Salon.animar(dt, t);
+    mundo().animar(dt, t);
     // 1) mi movimiento
     const yoV = pjs.get(miId());
     const ent = entrada();
     let meMuevo = false;
-    const cerca = !vistiendo && Math.hypot(yoPos.x - Salon.VESTIDOR.x, yoPos.z - Salon.VESTIDOR.z) < 1.6;
+    const cerca = !vistiendo && !enJuego() && Math.hypot(yoPos.x - Salon.VESTIDOR.x, yoPos.z - Salon.VESTIDOR.z) < 1.6;
     if (cerca !== botonCerca) { botonCerca = cerca; $('#b-vestidor').classList.toggle('ver', cerca); }
-    if (!bloqueado() && !vistiendo && ent.d > 0.12) {
-      const vel = 3.3 * cfg().velocidad * (llevaA(miId()) ? 0.8 : 1);
+    if (!bloqueado() && !vistiendo && !(enJuego() && J().bloqueado()) && ent.d > 0.12) {
+      const vel = 3.3 * cfg().velocidad * (llevaA(miId()) ? 0.8 : 1) * (enJuego() ? J().velocidad() : 1);
       yoPos.x += ent.x * vel * dt; yoPos.z += ent.z * vel * dt;
-      Salon.colisionar(yoPos);
+      if (enJuego() && J().soyFantasma()) Mansion.limites(yoPos); else mundo().colisionar(yoPos); // los fantasmas atraviesan paredes
       yoPos.r = angulo(yoPos.r, Math.atan2(ent.x, ent.z), Math.min(1, dt * 14));
       meMuevo = true;
       if (yoV && yoV.efecto && yoV.efecto.n === 'bailar') yoV.efecto = null;
@@ -391,7 +399,7 @@
     const k = 1 - Math.exp(-dt * 12);
     pjs.forEach((v, id) => {
       const o = v.obj; if (!o) return;
-      const verlo = v.posLista && (!vistiendo || id === miId()); // en el probador solo te ves tú
+      const verlo = v.posLista && (!vistiendo || id === miId()) && (!enJuego() || J().visible(id)); // probador / fantasmas
       o.visible = verlo; v.etiqueta.style.visibility = verlo ? '' : 'hidden';
       let andando;
       if (id === miId()) { v.cx = yoPos.x; v.cz = yoPos.z; v.cr = yoPos.r; andando = meMuevo; }
@@ -418,6 +426,7 @@
         if (llevaA(id)) o.userData.brazos.forEach((b, i) => { b.rotation.z = (i ? -1 : 1) * 2.7; b.rotation.x = 0; });
       }
       aplicarEfecto(v, dt, id);
+      if (enJuego()) J().efecto(v, id, dt, t);
       // etiqueta
       proy.set(o.position.x, o.position.y + 2.05, o.position.z).project(A.camara);
       v.etiqueta.style.display = proy.z > 1 ? 'none' : '';
@@ -433,6 +442,11 @@
     if (vistiendo) { // primer plano de mi muñeco (a la izquierda del panel)
       const off = horiz ? 1.45 : 0;
       tmp.set(px + off, 1.7, pz + 5.0); mx = px + off; my = horiz ? 0.95 : 0.35; mz = pz;
+    } else if (enJuego() && J().cine()) { // escena de la granada: cámara de lado y cerquita
+      const c = J().cine(); tmp.set(c.pos[0], c.pos[1], c.pos[2]); mx = c.mira[0]; my = c.mira[1]; mz = c.mira[2];
+    } else if (enJuego()) { // en la mansión: cámara más cerca y el sol (sombras) sigue al jugador
+      tmp.set(px, 7.4 * z, pz + 5.6 * z); mx = px; my = 0.3; mz = pz - 0.6;
+      A.sol.position.set(px + 3, 7, pz + 5); A.sol.target.position.set(px, 0, pz); A.sol.target.updateMatrixWorld();
     } else tmp.set(px * 0.85, 8.4 * z, pz + 6.2 * z);
     if (!camaraLista) { camPos.copy(tmp); camMira.set(mx, my, mz); camaraLista = true; }
     camPos.lerp(tmp, 1 - Math.exp(-dt * 5));
@@ -448,7 +462,7 @@
   const lienzo = A.renderer.domElement;
   lienzo.addEventListener('pointerdown', e => { if (A.pantalla === 'sala') toque = { x: e.clientX, y: e.clientY, t: performance.now() }; });
   lienzo.addEventListener('pointerup', e => {
-    if (A.pantalla !== 'sala' || !toque) return;
+    if (A.pantalla !== 'sala' || !toque || enJuego()) return;
     const corto = performance.now() - toque.t < 400 && Math.hypot(e.clientX - toque.x, e.clientY - toque.y) < 12;
     toque = null; if (!corto) return;
     punto.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
@@ -800,18 +814,29 @@
   };
 
   function empezar() {
+    if (enJuego()) return;
     if (jugadores.length < 3 && !confirm('Se recomienda jugar con 3 o más. ¿Empezar igual?')) return;
-    enviar('inicio', { config: cfg(), jugadores: jugadores.map(j => j.id) });
+    // el anfitrión reparte los roles al azar y los lugares de salida
+    const ids = jugadores.map(j => j.id);
+    const mezcla = ids.slice().sort(() => Math.random() - 0.5);
+    const nImp = ids.length < 2 ? 0 : Math.max(1, Math.min(cfg().impostores, Math.floor((ids.length - 1) / 2) || 1));
+    const roles = {}, salidas = {};
+    mezcla.forEach((id, i) => roles[id] = i < nImp ? 'i' : 't');
+    ids.forEach((id, i) => { const p = Mansion.salida(i, ids.length); salidas[id] = [+p.x.toFixed(2), +p.z.toFixed(2)]; });
+    sb.from('zoo_salas').update({ estado: 'jugando', actualizado: new Date().toISOString() }).eq('codigo', sala.codigo).then(() => { });
+    enviar('inicio', { config: cfg(), roles, salidas });
   }
-  function alIniciar() {
-    // La partida 3D llega en la Parte 3; por ahora solo se anuncia.
+  function alIniciar(datos) {
+    if (vistiendo) cerrarVestidor();
+    [...cargas.keys()].forEach(c => alSoltar({ cargado: c, silencio: true }));
+    $$('.modal').forEach(m => m.classList.remove('activa'));
     const c = $('#cuenta'); c.classList.add('ver');
     let n = 3; c.textContent = n; A.bip(700, 0.15);
     const h = setInterval(() => {
       n--;
       if (n > 0) { c.textContent = n; A.bip(700, 0.15); return; }
       clearInterval(h); c.textContent = '¡A JUGAR!'; A.bip(1200, 0.3);
-      setTimeout(() => { c.classList.remove('ver'); A.toast('🚧 El mapa y la partida llegan en la Parte 3', 3500); }, 1100);
+      setTimeout(() => { c.classList.remove('ver'); if (datos && datos.roles && J()) J().comenzar(datos); }, 700);
     }, 800);
   }
 
@@ -883,7 +908,16 @@
   };
 
   // ---------- link con ?sala=CODIGO ----------
+  // lo que necesita la partida (juego.js)
+  const interno = {
+    get canal() { return canal; }, get sala() { return sala; }, get jugadores() { return jugadores; }, get yo() { return yo; },
+    pjs, yoPos, cargas, enviar, enviarPos, miId, soyHost, cfg, nombreDe, texto, mensajeSistema, pintarTodo, P3,
+    sacudir(v) { sacudida = Math.max(sacudida, v); },
+    reiniciarCamara() { camaraLista = false; },
+  };
+
   window.ZooSala = {
+    interno,
     _dbg: { yoPos, pjs, enviarPos, cargas }, // para pruebas automáticas
     alEntrar() {
       const cod = new URLSearchParams(location.search).get('sala');

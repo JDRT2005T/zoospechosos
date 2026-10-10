@@ -319,3 +319,73 @@ input::placeholder { color: rgba(255, 255, 255, .35); }
   background: linear-gradient(180deg, #ff7ac0, var(--rosa)); color: #fff; box-shadow: 0 5px 0 #a3125c, 0 8px 22px rgba(255, 61, 154, .45); animation: latido 1.4s infinite; }
 #b-vestidor.ver { display: block; }
 @media (orientation: portrait) { .vestidor { left: 12px; right: 12px; top: auto; width: auto; height: 46vh; } }
+
+/* ===== partida en la mansión ===== */
+#hud { display: none; }
+#p-sala.en-juego #hud { display: block; }
+#p-sala.en-juego > .barra, #p-sala.en-juego .modo-chip, #p-sala.en-juego #chat-log, #p-sala.en-juego .derecha,
+#p-sala.en-juego #b-vestidor, #p-sala.en-juego #vestidor, #p-sala.en-juego #chat-barra, #p-sala.en-juego #b-bajar, #p-sala.en-juego #solicitud { display: none !important; }
+#p-sala.en-juego .etiqueta em, #p-sala.en-juego .etiqueta i { display: none; }
+.etiqueta.imp { border-color: #ff4d6d; color: #ff8fa3; }
+.etiqueta.fant { opacity: .6; font-style: italic; }
+.etiqueta.fant .nom::before { content: '👻 '; }
+.h-rol { position: fixed; left: max(14px, env(safe-area-inset-left)); top: max(12px, env(safe-area-inset-top)); padding: 8px 14px; border-radius: 14px; font-family: 'Lilita One'; font-size: 18px;
+  letter-spacing: 1px; background: var(--vidrio); border: 2px solid var(--borde); backdrop-filter: blur(10px); line-height: 1.1; }
+.h-rol small { display: block; font-family: 'Nunito'; font-weight: 800; font-size: 11px; letter-spacing: 0; opacity: .85; }
+.h-rol.impostor { border-color: #ff4d6d; color: #ff8fa3; box-shadow: 0 0 18px rgba(255, 46, 46, .35); }
+.h-rol.tripulante { border-color: var(--cian); color: #b8fff8; }
+.h-rol.fantasma { border-color: #c9b8ec; color: #e8dcff; }
+#h-cuarto { position: fixed; left: 50%; top: max(14px, env(safe-area-inset-top)); transform: translateX(-50%); background: rgba(10, 4, 22, .55); padding: 5px 12px; border-radius: 999px; font-weight: 900; font-size: 13px; }
+#h-cuarto:empty { display: none; }
+.h-der { position: fixed; right: max(14px, env(safe-area-inset-right)); top: max(12px, env(safe-area-inset-top)); display: flex; gap: 8px; align-items: center; }
+#h-vivos { background: var(--vidrio); border: 1px solid var(--borde); padding: 9px 12px; border-radius: 14px; font-weight: 900; font-size: 14px; backdrop-filter: blur(10px); }
+#b-matar { position: fixed; right: max(20px, env(safe-area-inset-right)); bottom: max(20px, env(safe-area-inset-bottom)); width: 104px; height: 104px; border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #5a5a6a, #2a2a36); border: 4px solid #555; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  filter: grayscale(1); opacity: .6; transition: .15s; position: fixed; }
+#b-matar span { font-size: 40px; line-height: 1; }
+#b-matar small { font-family: 'Lilita One'; font-size: 15px; letter-spacing: 1px; }
+#b-matar b { position: absolute; inset: 0; display: grid; place-items: center; font-family: 'Lilita One'; font-size: 44px; color: #fff; text-shadow: 0 2px 6px #000; }
+#b-matar b:empty { display: none; }
+#b-matar.listo { filter: none; opacity: 1; background: radial-gradient(circle at 40% 35%, #ff6b6b, #b00020); border-color: #ff9a9a; box-shadow: 0 0 30px rgba(255, 46, 46, .7); animation: latido 0.9s infinite; }
+#b-matar.listo:active { transform: scale(.92); }
+#b-matar[hidden] { display: none !important; }
+
+#fundido { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity .55s; z-index: 60; }
+#fundido.ver { opacity: 1; }
+#revelar { position: fixed; inset: 0; z-index: 55; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; padding: 20px;
+  background: radial-gradient(circle at 50% 50%, rgba(20, 8, 40, .92), rgba(0, 0, 0, .97)); }
+#revelar.ver { display: flex; animation: aparecer .4s ease; }
+#r-ico { font-size: 70px; animation: latido 1s infinite; }
+#r-tit { font-family: 'Lilita One'; font-size: clamp(48px, 11vw, 96px); letter-spacing: 4px; animation: golpe .6s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes golpe { from { transform: scale(2.4); opacity: 0; } }
+#revelar.impostor #r-tit { color: #ff2e2e; text-shadow: 0 0 30px rgba(255, 0, 0, .8), 0 5px 0 #5a0000; }
+#revelar.tripulante #r-tit { color: var(--cian); text-shadow: 0 0 30px rgba(46, 230, 214, .7), 0 5px 0 #0b5a54; }
+#r-sub { font-weight: 900; font-size: 18px; color: #fff; }
+#r-equipo { font-weight: 800; color: #ff8fa3; min-height: 20px; }
+#aviso-muerte { position: fixed; left: 50%; top: 30%; transform: translate(-50%, -50%) scale(.6); opacity: 0; pointer-events: none; z-index: 40; text-align: center; transition: .35s cubic-bezier(.2, 1.5, .4, 1);
+  background: rgba(15, 4, 25, .88); border: 2px solid #ff4d6d; border-radius: 20px; padding: 16px 24px; display: flex; flex-direction: column; gap: 6px; }
+#aviso-muerte.ver { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+#aviso-muerte b { font-family: 'Lilita One'; font-weight: 400; font-size: 30px; color: #ff4d6d; }
+#aviso-muerte span { font-weight: 800; }
+#aviso-muerte small { color: var(--suave); }
+#final { position: fixed; inset: 0; z-index: 50; display: none; align-items: center; justify-content: center; padding: 16px; background: rgba(5, 0, 15, .82); backdrop-filter: blur(6px); }
+#final.ver { display: flex; animation: aparecer .4s; }
+.f-caja { width: min(620px, 100%); max-height: 100%; overflow: auto; text-align: center; }
+#f-tit { font-family: 'Lilita One'; font-weight: 400; font-size: clamp(30px, 6vw, 52px); margin: 0 0 12px; }
+#final.impostor #f-tit { color: #ff2e2e; text-shadow: 0 0 24px rgba(255, 0, 0, .6); }
+#final.tripulante #f-tit { color: var(--cian); text-shadow: 0 0 24px rgba(46, 230, 214, .6); }
+#f-lista { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.f-jug { display: flex; flex-direction: column; align-items: center; min-width: 96px; padding: 8px 10px; border-radius: 14px; background: rgba(255, 255, 255, .08); border: 2px solid rgba(46, 230, 214, .4); }
+.f-jug.imp { border-color: #ff4d6d; background: rgba(255, 46, 46, .12); }
+.f-jug span { font-size: 24px; }
+.f-jug small { color: var(--suave); font-weight: 800; }
+#f-premio { font-weight: 900; color: var(--amarillo); min-height: 22px; margin: 12px 0 4px; }
+.f-caja > small { color: var(--suave); font-weight: 800; }
+/* barras negras de cine durante la granada */
+#cine { position: fixed; inset: 0; pointer-events: none; z-index: 30; }
+#cine i { position: absolute; left: 0; right: 0; height: 0; background: #000; transition: height .35s ease; }
+#cine i:first-child { top: 0; } #cine i:last-child { bottom: 0; }
+#cine.ver i { height: 12vh; }
+#frase { position: absolute; left: 50%; top: 16vh; transform: translateX(-50%); font-family: 'Lilita One'; font-size: clamp(26px, 6vw, 48px); color: var(--amarillo);
+  text-shadow: 0 4px 0 #b3410e, 0 0 20px rgba(255, 61, 154, .8); opacity: 0; white-space: nowrap; }
+#frase.ver { animation: efecto 1.3s ease forwards; }
