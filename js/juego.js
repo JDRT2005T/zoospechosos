@@ -12,6 +12,7 @@
   let enfriaHasta = 0, mostrandoRol = false, terminando = false, objetivo = null;
   const restos = [];                // cuerpos, sangre y pedazos (se borran al final)
   const pedazos = [];               // pedazos que todavía vuelan
+  const cuerpos = [];               // cadáveres que se pueden reportar { id, x, z }
 
   const miId = () => S().miId();
   const rol = id => roles[id];
@@ -39,6 +40,7 @@
   function comenzar(d) {
     activo = true; terminando = false; roles = d.roles || {}; nInicial = Object.keys(roles).length;
     muertos.clear(); muriendo.clear(); limpiarRestos();
+    ZooReunion.iniciar();
     ZooMisiones.iniciar(d.tareas, roles, miId());
     ZooSabotaje.iniciar(roles);
     enfriaHasta = Date.now() + 12000; // al principio el impostor espera un poco
@@ -361,7 +363,7 @@
   const MUERTES = Object.keys(ANIMS);
 
   function alMuerte(m) {
-    if (!activo || rol(m.a) !== 'i' || !vivo(m.a) || !vivo(m.v) || rol(m.v) === 'i') return;
+    if (!activo || ZooReunion.activa() || rol(m.a) !== 'i' || !vivo(m.a) || !vivo(m.v) || rol(m.v) === 'i') return;
     const vv = S().pjs.get(m.v), va = S().pjs.get(m.a);
     if (!vv || !va) return;
     const tipo = ANIMS[m.tipo] ? m.tipo : 'granada', D = ANIMS[tipo];
@@ -425,15 +427,21 @@
       D.eventos.forEach(([te, fn], i) => { if (t >= te && !k.ev[i]) { k.ev[i] = true; fn(k); } });
       if (D.tick) D.tick(k, t, dt);
       if (t >= D.tMuerte && !k.murio) { k.murio = true; morir(k); }
-      if (t >= D.tFin) { // termina
-        if (va && va.obj) { va.obj.userData.cuerpo.rotation.x = 0; }
-        k.pm.todo.forEach(quitar);
-        if (k.ca) { k.pc.todo.forEach(quitar); set.remove(k.ca); set.remove(k.cv); Zoo.liberar(k.ca); Zoo.liberar(k.cv); if (![...muriendo.values()].some(x => x !== k && x.ca)) set.visible = false; S().reiniciarCamara(); }
-        muriendo.delete(vid);
-        pintarHud();
-        if (S().soyHost()) setTimeout(revisarFin, 2600); // dejar ver la escena antes del final
-      }
+      if (t >= D.tFin) { cerrarMuerte(k, vid); if (S().soyHost()) setTimeout(revisarFin, 2600); } // dejar ver la escena antes del final
     });
+  }
+  function cerrarMuerte(k, vid) {
+    const va = S().pjs.get(k.a), vv = S().pjs.get(k.v);
+    if (va && va.obj) { va.obj.userData.cuerpo.rotation.x = 0; }
+    if (vv) vv.alto = 0;
+    k.pm.todo.forEach(quitar);
+    if (k.ca) { k.pc.todo.forEach(quitar); set.remove(k.ca); set.remove(k.cv); Zoo.liberar(k.ca); Zoo.liberar(k.cv); if (![...muriendo.values()].some(x => x !== k && x.ca)) set.visible = false; S().reiniciarCamara(); $('#cine').classList.remove('ver'); }
+    muriendo.delete(vid);
+    pintarHud();
+  }
+  // si empieza una reunión mientras alguien está muriendo: termina de golpe
+  function cortarMuertes() {
+    muriendo.forEach((k, vid) => { if (!k.murio) { k.murio = true; morir(k); } cerrarMuerte(k, vid); });
   }
   function mostrarFrase(txt) {
     const f = $('#frase'); f.textContent = txt; f.classList.remove('ver'); void f.offsetWidth; f.classList.add('ver');
@@ -446,6 +454,7 @@
     ANIMS[k.tipo].morir(k, color, jug);
     if (vv && vv.obj) { k.pm.todo.forEach(o => { if (o.parent === vv.obj.userData.cuerpo) quitar(o); }); vv.alto = 0; }
     muertos.add(k.v);
+    cuerpos.push({ id: k.v, x: k.x, z: k.z });
     hacerFantasma(k.v);
     if (k.v === miId()) setTimeout(() => {
       const a = $('#aviso-muerte'); a.querySelector('b').textContent = { granada: '💥 ¡TE EXPLOTARON!', martillo: '🔨 ¡TE APLASTARON!', pastel: '🎂 ¡PASTEL MORTAL!', varilla: '🩸 ¡TE ENSARTARON!' }[k.tipo];
@@ -632,6 +641,7 @@
   function alFin(m) {
     if (!activo || terminando) return;
     terminando = true;
+    ZooReunion.terminar();
     const f = $('#final');
     const gana = m.gana;
     f.className = 'ver ' + (gana === 'i' ? 'impostor' : gana === 't' ? 'tripulante' : '');
@@ -667,6 +677,7 @@
     if (!activo) return;
     ZooMisiones.terminar();
     ZooSabotaje.terminar();
+    ZooReunion.terminar();
     activo = false; terminando = false; mostrandoRol = false;
     muriendo.forEach(k => { k.pm.todo.forEach(quitar); if (k.ca) { k.pc.todo.forEach(quitar); set.remove(k.ca); set.remove(k.cv); } });
     set.visible = false;
@@ -688,7 +699,7 @@
   }
   function limpiarRestos() {
     restos.forEach(r => { A.escena.remove(r); r.traverse(o => { if (o.geometry) o.geometry.dispose(); }); });
-    restos.length = 0; pedazos.length = 0;
+    restos.length = 0; pedazos.length = 0; cuerpos.length = 0;
   }
 
   $('#b-terminar').addEventListener('click', () => {
@@ -705,6 +716,7 @@
 
   // cámara de cine (como en Among Us) para el impostor y la víctima
   function cine() {
+    const r = ZooReunion.cine(); if (r) return r;
     for (const k of muriendo.values()) {
       if (!k.ca) continue;
       const atras = k.murio ? 1.6 : 0;
@@ -717,6 +729,7 @@
   // ================= LO QUE USA sala.js =================
   function bloqueado() {
     if (mostrandoRol || terminando) return true;
+    if (ZooReunion.bloquea()) return true;
     if (muriendo.has(miId())) return true;
     if (ZooMisiones.abierta()) return true;
     if (ZooSabotaje.yoEnVent()) return true;
@@ -729,6 +742,23 @@
     MUERTES: ['granada', 'martillo', 'pastel', 'varilla'],
     get activo() { return activo; },
     comenzar, terminar, bloqueado, soyFantasma, cine,
+    // lo que usa reunion.js
+    interno: {
+      get roles() { return roles; }, muertos, cuerpos, vivo, rol, soyImpostor, ropaDe, escapar, mismoCuarto, revisarFin, pintarHud, cortarMuertes, limpiarRestos,
+      get terminando() { return terminando; },
+      expulsar(id) { if (!roles[id] || muertos.has(id)) return; muertos.add(id); hacerFantasma(id); if (id === miId()) ZooMisiones.cerrar(); pintarHud(); },
+      // después de la reunión: todos a la mesa del vestíbulo
+      reubicar() {
+        const ids = Object.keys(roles), yp = S().yoPos;
+        ids.forEach((id, i) => {
+          const p = Mansion.salida(i, ids.length);
+          if (id === miId()) { yp.x = p.x; yp.z = p.z; yp.r = Math.PI; }
+          const v = S().pjs.get(id); if (v) { v.cx = v.tx = p.x; v.cz = v.tz = p.z; v.cr = v.tr = Math.PI; v.alto = 0; v.efecto = null; }
+        });
+        S().enviarPos(true); S().reiniciarCamara();
+      },
+      reiniciarEspera() { enfriaHasta = Date.now() + S().cfg().enfriamiento * 1000; },
+    },
     velocidad: () => soyFantasma() ? 1.25 : 1,
     // los vivos no ven a los fantasmas
     visible: id => (!muertos.has(id) || soyFantasma()) && !ZooSabotaje.enVent(id),
@@ -744,6 +774,7 @@
     },
     registrar(canal) {
       ZooSabotaje.registrar(canal);
+      ZooReunion.registrar(canal);
       canal.on('broadcast', { event: 'mision' }, ({ payload }) => { if (!activo) return; ZooMisiones.alHecho(payload); if (S().soyHost()) setTimeout(revisarFin, 300); })
         .on('broadcast', { event: 'muerte' }, ({ payload }) => alMuerte(payload))
         .on('broadcast', { event: 'fin' }, ({ payload }) => alFin(payload));

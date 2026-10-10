@@ -37,6 +37,18 @@
     $('#m-sabotaje').classList.remove('activa');
   }
 
+  // al empezar una reunión: se arregla todo y nadie queda en la alcantarilla
+  function limpiar() {
+    if (!activo) return;
+    sab = null; miVent = null;
+    cerradas.clear(); enVent.clear(); animV.clear();
+    Mansion.abrirTodas();
+    ['#oscuro', '#sab-banner', '#vent-ui'].forEach(s => $(s).classList.remove('ver'));
+    $('#m-sabotaje').classList.remove('activa');
+    enfriaHasta = Date.now() + 15000;
+    pintar();
+  }
+
   // ---------- el impostor sabotea ----------
   $('#b-sabotaje').addEventListener('click', () => {
     if (!activo || !soyImp() || fantasma()) return;
@@ -202,7 +214,8 @@
   });
 
   window.ZooSabotaje = {
-    iniciar, terminar,
+    iniciar, terminar, limpiar,
+    hay: () => !!sab,
     registrar(canal) {
       canal.on('broadcast', { event: 'sab' }, ({ payload }) => alSabotaje(payload))
         .on('broadcast', { event: 'arreglo' }, ({ payload }) => alArreglo(payload))
