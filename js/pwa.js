@@ -6,7 +6,8 @@
   let aviso = null;
 
   if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) {
-    addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { }));
+    const registrar = () => navigator.serviceWorker.register('sw.js').catch(() => { });
+    if (document.readyState === 'complete') registrar(); else addEventListener('load', registrar);
   }
 
   function mostrar(ver) { $$('[data-instalar]').forEach(b => b.hidden = !ver); }

@@ -13,7 +13,7 @@
     { id: 'rana', nombre: 'Rana', emoji: '🐸', color: '#5ad16b' },
     { id: 'pinguino', nombre: 'Pingüino', emoji: '🐧', color: '#2d3a5a' },
   ];
-  const COLORES = ['#ff4d6d', '#ff9f43', '#ffd93d', '#5ad16b', '#2ed3c6', '#3a86ff', '#7b5cff', '#d65cff',
+  const COLORES = ['#ff4d6d', '#ff9f43', '#ffd93d', '#5ad16b', '#2ed3c6', '#3a86ff', '#7b5cff', '#d65cff', '#f1e6ff',
     '#ff7eb6', '#8b5a3c', '#c8935a', '#f4f4f4', '#9aa5b1', '#2d3a5a', '#1c1c24', '#ff6b2c'];
   const SOMBREROS = [
     { id: 'ninguno', nombre: 'Nada', emoji: '🚫' },

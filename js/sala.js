@@ -98,7 +98,8 @@
         mensajeSistema('👑 ' + nombreDe(payload.id) + ' es el anfitrión');
         pintarTodo();
       })
-      .on('broadcast', { event: 'listo' }, ({ payload }) => { const j = jugadores.find(x => x.id === payload.id); if (j) { j.listo = payload.listo; pintarTodo(); } })
+      .on('broadcast', { event: 'listo' }, ({ payload }) => { const j = jugadores.find(x => x.id === payload.id); if (j) { j.listo = payload.listo; pintarTodo(); if (j.listo) fx('confeti', j.id, 1.8); } })
+      .on('broadcast', { event: 'ropa' }, ({ payload }) => alRopa(payload))
       .on('broadcast', { event: 'emote' }, ({ payload }) => mostrarEmote(payload.id, payload.e))
       .on('broadcast', { event: 'chat' }, ({ payload }) => alChat(payload))
       .on('broadcast', { event: 'accion' }, ({ payload }) => alAccion(payload))
@@ -139,7 +140,8 @@
     sala = null; jugadores = []; cargas.clear();
     [...pjs.keys()].forEach(quitarPj);
     $$('.modal').forEach(m => m.classList.remove('activa'));
-    ['#chat-barra', '#solicitud', '#b-bajar', '#emotes'].forEach(s => $(s).classList.remove('ver'));
+    ['#chat-barra', '#solicitud', '#b-bajar', '#emotes', '#vestidor', '#b-vestidor'].forEach(s => $(s).classList.remove('ver'));
+    vistiendo = false; $('#p-sala').classList.remove('vistiendo');
     Salon.grupo.visible = false;
     A.ir('menu');
   }
@@ -182,7 +184,9 @@
     jugadores = nuevos;
     // limpiar cargas de gente que se fue
     [...cargas].forEach(([c, p]) => { if (!ahora.has(c) || !ahora.has(p)) alSoltar({ cargado: c, silencio: true }); });
+    revisarColor();
     pintarTodo();
+    if (vistiendo) pintarVestidor();
   }
 
   // ================= MOVIMIENTO =================
@@ -357,7 +361,7 @@
 
   // ---------- bucle del salón ----------
   const proy = new T.Vector3(), camPos = new T.Vector3(), camMira = new T.Vector3(), tmp = new T.Vector3();
-  let camaraLista = false, sacudida = 0;
+  let camaraLista = false, sacudida = 0, botonCerca = false;
   const angulo = (a, b, k) => { let d = b - a; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return a + d * k; };
 
   A.alCuadro.push((dt, t) => {
@@ -367,7 +371,9 @@
     const yoV = pjs.get(miId());
     const ent = entrada();
     let meMuevo = false;
-    if (!bloqueado() && ent.d > 0.12) {
+    const cerca = !vistiendo && Math.hypot(yoPos.x - Salon.VESTIDOR.x, yoPos.z - Salon.VESTIDOR.z) < 1.6;
+    if (cerca !== botonCerca) { botonCerca = cerca; $('#b-vestidor').classList.toggle('ver', cerca); }
+    if (!bloqueado() && !vistiendo && ent.d > 0.12) {
       const vel = 3.3 * cfg().velocidad * (llevaA(miId()) ? 0.8 : 1);
       yoPos.x += ent.x * vel * dt; yoPos.z += ent.z * vel * dt;
       Salon.colisionar(yoPos);
@@ -385,7 +391,8 @@
     const k = 1 - Math.exp(-dt * 12);
     pjs.forEach((v, id) => {
       const o = v.obj; if (!o) return;
-      o.visible = v.posLista; v.etiqueta.style.visibility = v.posLista ? '' : 'hidden'; // esperar a saber dónde está
+      const verlo = v.posLista && (!vistiendo || id === miId()); // en el probador solo te ves tú
+      o.visible = verlo; v.etiqueta.style.visibility = verlo ? '' : 'hidden';
       let andando;
       if (id === miId()) { v.cx = yoPos.x; v.cz = yoPos.z; v.cr = yoPos.r; andando = meMuevo; }
       else {
@@ -395,7 +402,8 @@
         andando = Math.hypot(dx, dz) > 0.04 && performance.now() - v.ultimoMov < 400;
       }
       // caída al entrar
-      if (v.caida > 0) { v.vy = (v.vy || 0) - 20 * dt; v.caida = Math.max(0, v.caida + v.vy * dt); if (!v.caida) v.vy = 0; }
+      if (v.caida > 0) { v.vy = (v.vy || 0) - 20 * dt; v.caida = Math.max(0, v.caida + v.vy * dt); if (!v.caida) { v.vy = 0; Part.caida({ x: v.cx, y: 0.1, z: v.cz }); } }
+      if (andando) { v.paso = (v.paso || 0) - dt; if (v.paso <= 0) { v.paso = 0.16; Part.polvo({ x: v.cx, y: 0.08, z: v.cz }); } }
       const portador = cargas.get(id);
       const pv = portador && pjs.get(portador);
       if (pv) {
@@ -420,10 +428,15 @@
     const yv = pjs.get(miId());
     const px = yv && yv.obj ? yv.obj.position.x : yoPos.x, pz = yv && yv.obj ? yv.obj.position.z : yoPos.z;
     const z = innerWidth / innerHeight < 0.75 ? 1.3 : 1;
-    tmp.set(px * 0.85, 8.4 * z, pz + 6.2 * z);
-    if (!camaraLista) { camPos.copy(tmp); camMira.set(px * 0.85, 0.3, pz - 0.7); camaraLista = true; }
+    const horiz = innerWidth > innerHeight;
+    let mx = px * 0.85, my = 0.3, mz = pz - 0.7;
+    if (vistiendo) { // primer plano de mi muñeco (a la izquierda del panel)
+      const off = horiz ? 1.45 : 0;
+      tmp.set(px + off, 1.7, pz + 5.0); mx = px + off; my = horiz ? 0.95 : 0.35; mz = pz;
+    } else tmp.set(px * 0.85, 8.4 * z, pz + 6.2 * z);
+    if (!camaraLista) { camPos.copy(tmp); camMira.set(mx, my, mz); camaraLista = true; }
     camPos.lerp(tmp, 1 - Math.exp(-dt * 5));
-    camMira.lerp(tmp.set(px * 0.85, 0.3, pz - 0.7), 1 - Math.exp(-dt * 5));
+    camMira.lerp(tmp.set(mx, my, mz), 1 - Math.exp(-dt * 5));
     A.camara.position.copy(camPos);
     if (sacudida > 0) { sacudida -= dt; A.camara.position.x += (Math.random() - 0.5) * sacudida; A.camara.position.y += (Math.random() - 0.5) * sacudida; }
     A.camara.lookAt(camMira);
@@ -495,11 +508,14 @@
     enviar('accion', { tipo: a, de: miId(), a: id, ax: +ax.toFixed(2), az: +az.toFixed(2), ar: +ar.toFixed(2) });
   }
 
+  const P3 = (id, y) => { const v = pjs.get(id); return v && v.obj ? { x: v.obj.position.x, y: (y || 0) + v.obj.position.y, z: v.obj.position.z } : null; };
+  const fx = (efecto, id, y) => { const p = P3(id, y); if (p) Part[efecto](p); };
   function posDe(id) { const v = pjs.get(id); return id === miId() ? { x: yoPos.x, z: yoPos.z } : (v ? { x: v.cx, z: v.cz } : null); }
   function alAccion(m) {
     const va = pjs.get(m.de), vb = pjs.get(m.a);
     if (!va || !vb) return;
     // el que hace la acción se ubica (y se gira)
+    if (m.tipo === 'jutsu') fx('humo', m.de, 0.8); // humo donde estaba
     if (m.de === miId()) { yoPos.x = m.ax; yoPos.z = m.az; yoPos.r = m.ar; enviarPos(true); }
     else { va.cx = va.tx = m.ax; va.cz = va.tz = m.az; va.cr = va.tr = m.ar; }
     const pb = posDe(m.a);
@@ -510,6 +526,9 @@
     if (m.tipo === 'jutsu') {
       ponerEfecto(m.de, 'jutsu_atacante'); ponerEfecto(m.a, 'jutsu_victima', { dir: { x: dx, z: dz } });
       texto(m.de, '💨 🙏 ¡Sello del tigre!');
+      Part.humo({ x: m.ax, y: 0.8, z: m.az });
+      setTimeout(() => fx('impacto', m.a, 0.9), 750);
+      setTimeout(() => fx('caida', m.a, 0.1), 2100);
       A.bip(400, 0.3, 'sine', 0.04);
       setTimeout(() => {
         texto(m.a, '💥 ¡MIL AÑOS DE MUERTE! 🍑');
@@ -521,17 +540,20 @@
     } else if (m.tipo === 'abrazo') {
       ponerEfecto(m.de, 'abrazo'); ponerEfecto(m.a, 'abrazo');
       texto(m.a, '💕'); setTimeout(() => texto(m.de, '🥰'), 300);
+      fx('corazones', m.a, 1.6); setTimeout(() => fx('corazones', m.de, 1.6), 300);
       A.bip(660, 0.2, 'sine', 0.05);
     } else if (m.tipo === 'cinco') {
       ponerEfecto(m.de, 'cinco'); ponerEfecto(m.a, 'cinco');
-      setTimeout(() => { texto(m.a, '🙌 ¡PAM! ✨'); A.bip(1500, 0.08, 'square', 0.05); }, 450);
+      setTimeout(() => { texto(m.a, '🙌 ¡PAM! ✨'); A.bip(1500, 0.08, 'square', 0.05); const a = P3(m.a, 2), b = P3(m.de, 2); if (a && b) Part.chispas({ x: (a.x + b.x) / 2, y: 2, z: (a.z + b.z) / 2 }); }, 450);
     } else if (m.tipo === 'empujar') {
       ponerEfecto(m.de, 'empujar_atacante'); ponerEfecto(m.a, 'empujar_victima', { dir: { x: dx, z: dz } });
       texto(m.a, '😤 ¡Oye!'); A.bip(220, 0.12, 'square', 0.05);
+      fx('impacto', m.a, 1);
       if (m.a === miId()) sacudida = 0.25;
     } else if (m.tipo === 'bailar') {
       ponerEfecto(m.de, 'bailar'); ponerEfecto(m.a, 'bailar');
       texto(m.de, '🎶'); setTimeout(() => texto(m.a, '💃🕺'), 250);
+      for (let i = 0; i < 6; i++) setTimeout(() => { fx('notas', m.de, 2); fx('notas', m.a, 2); }, i * 800);
       mensajeSistema('💃 ' + nombreDe(m.de) + ' y ' + nombreDe(m.a) + ' están bailando');
     }
   }
@@ -569,6 +591,7 @@
     cargas.set(m.cargado, m.portador);
     const vc = pjs.get(m.cargado); if (vc) vc.efecto = null;
     texto(m.portador, '💪 ¡Arriba!');
+    fx('chispas', m.portador, 2.2);
     mensajeSistema('🏋️ ' + nombreDe(m.portador) + ' lleva cargado a ' + nombreDe(m.cargado));
     botonBajar();
   }
@@ -658,6 +681,92 @@
     while (log.children.length > 6) log.firstChild.remove();
     setTimeout(() => d.classList.add('viejo'), 12000);
     setTimeout(() => d.remove(), 13500);
+  }
+
+  // ================= VESTIDOR (dentro de la sala) =================
+  const CAMPOS = ['animal', 'color', 'sombrero', 'gafas', 'accesorio'];
+  let vistiendo = false, vCat = 'color', ropaAntes = null;
+  const ropaDe = o => { const r = {}; CAMPOS.forEach(k => r[k] = o[k]); return r; };
+  const colorDe = c => jugadores.find(j => j.id !== miId() && j.color === c); // ¿quién tiene ese color?
+  const colorLibre = pref => (pref && !colorDe(pref)) ? pref : Zoo.COLORES.find(c => !colorDe(c));
+
+  function abrirVestidor() {
+    if (!sala) return;
+    if (cargas.has(miId()) || llevaA(miId())) return A.toast('Primero bájate 😅');
+    vistiendo = true; ropaAntes = ropaDe(yo);
+    yoPos.r = 0; enviarPos(true);
+    $('#p-sala').classList.add('vistiendo'); $('#vestidor').classList.add('ver');
+    ['#chat-barra', '#emotes'].forEach(x => $(x).classList.remove('ver'));
+    pintarVestidor();
+  }
+  async function cerrarVestidor() {
+    if (!vistiendo) return;
+    vistiendo = false;
+    $('#p-sala').classList.remove('vistiendo'); $('#vestidor').classList.remove('ver');
+    const cambios = {}; CAMPOS.forEach(k => { if (yo[k] !== ropaAntes[k]) cambios[k] = yo[k]; });
+    if (!Object.keys(cambios).length) return;
+    Object.assign(A.perfil, cambios); // se guarda en tu cuenta
+    const { error } = await sb.from('zoo_perfiles').update(Object.assign({ actualizado: new Date().toISOString() }, cambios)).eq('id', miId());
+    A.toast(error ? 'No se pudo guardar tu ropa 😕' : '¡Te ves increíble! 😎');
+  }
+  $('#s-vestir').onclick = abrirVestidor;
+  $('#b-vestidor').onclick = abrirVestidor;
+  $('#v-listo').onclick = cerrarVestidor;
+  $$('[data-vcat]').forEach(b => b.onclick = () => { vCat = b.dataset.vcat; $$('[data-vcat]').forEach(x => x.classList.toggle('activa', x === b)); pintarVestidor(); });
+
+  function ponerRopa(cambios, silencio) {
+    Object.assign(yo, cambios);
+    const j = jugadores.find(x => x.id === miId()); if (j) Object.assign(j, cambios);
+    canal.track(yo);
+    enviar('ropa', Object.assign({ id: miId() }, ropaDe(yo))); // aviso inmediato
+    pintarTodo(); if (vistiendo) pintarVestidor();
+    if (!silencio) { fx('chispas', miId(), 1.4); A.bip(980, 0.08); }
+  }
+  function alRopa(m) {
+    if (m.id === miId()) return;
+    const j = jugadores.find(x => x.id === m.id); if (!j) return;
+    CAMPOS.forEach(k => { if (m[k]) j[k] = m[k]; });
+    revisarColor(); pintarTodo(); if (vistiendo) pintarVestidor();
+  }
+  // si otro (que llegó antes) tiene mi mismo color, me cambio a uno libre
+  function revisarColor() {
+    if (!yo || !canal) return;
+    const otro = jugadores.find(j => j.id !== miId() && j.color === yo.color);
+    if (!otro) return;
+    if (!(otro.desde < yo.desde || (otro.desde === yo.desde && otro.id < miId()))) return;
+    const nuevo = colorLibre();
+    if (!nuevo || nuevo === yo.color) return;
+    ponerRopa({ color: nuevo }, true);
+    A.toast('🎨 ' + otro.apodo + ' ya tenía tu color, te di otro. Cámbialo en el 👕 Vestidor');
+  }
+
+  function pintarVestidor() {
+    const cont = $('#v-opciones'); cont.innerHTML = '';
+    if (vCat === 'color') {
+      Zoo.COLORES.forEach(c => {
+        const due = colorDe(c);
+        const b = document.createElement('button');
+        b.className = 'op color' + (yo.color === c ? ' sel' : '') + (due ? ' ocupado' : '');
+        b.innerHTML = '<i style="background:' + c + '"></i>';
+        if (due) b.dataset.de = due.apodo;
+        b.onclick = () => due ? A.toast('🔒 Ese color es de ' + due.apodo) : (yo.color !== c && ponerRopa({ color: c }));
+        cont.appendChild(b);
+      });
+      return;
+    }
+    const lista = { animal: Zoo.ANIMALES, sombrero: Zoo.SOMBREROS, gafas: Zoo.GAFAS, accesorio: Zoo.ACCESORIOS }[vCat];
+    lista.forEach(o => {
+      const b = document.createElement('button');
+      b.className = 'op' + (yo[vCat] === o.id ? ' sel' : '');
+      b.innerHTML = o.emoji + '<small>' + o.nombre + '</small>';
+      b.onclick = () => {
+        if (yo[vCat] === o.id) return;
+        const cambios = { [vCat]: o.id };
+        if (vCat === 'animal' && !colorDe(o.color)) cambios.color = o.color; // color típico si está libre
+        ponerRopa(cambios);
+      };
+      cont.appendChild(b);
+    });
   }
 
   // ================= INTERFAZ =================

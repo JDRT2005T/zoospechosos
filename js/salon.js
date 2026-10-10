@@ -8,7 +8,7 @@
   const animados = [];
 
   const std = (color, o) => new T.MeshStandardMaterial(Object.assign({ color, roughness: 0.6 }, o || {}));
-  const neon = color => new T.MeshBasicMaterial({ color });
+  const neon = color => window.neon(color, 5); // brilla con el bloom
   function caja(w, h, d, mat, x, y, z, sombra = true) {
     const m = new T.Mesh(new T.BoxGeometry(w, h, d), mat);
     m.position.set(x, y, z); m.castShadow = sombra; m.receiveShadow = true; grupo.add(m); return m;
@@ -27,13 +27,13 @@
     g.strokeStyle = 'rgba(255,255,255,.06)'; g.lineWidth = 4; g.strokeRect(0, 0, 256, 256);
   });
   texPiso.wrapS = texPiso.wrapT = T.RepeatWrapping; texPiso.repeat.set(ANCHO / 2, FONDO / 2);
-  const piso = new T.Mesh(new T.PlaneGeometry(ANCHO, FONDO), new T.MeshStandardMaterial({ map: texPiso, roughness: 0.35, metalness: 0.1 }));
+  const piso = new T.Mesh(new T.PlaneGeometry(ANCHO, FONDO), new T.MeshStandardMaterial({ map: texPiso, roughness: 0.5, metalness: 0 }));
   piso.rotation.x = -Math.PI / 2; piso.receiveShadow = true; grupo.add(piso);
   // alfombra central con aro de neón
   const alfombra = new T.Mesh(new T.CircleGeometry(2.2, 48), std('#4a1670', { roughness: 0.95 }));
   alfombra.rotation.x = -Math.PI / 2; alfombra.position.y = 0.01; alfombra.receiveShadow = true; grupo.add(alfombra);
   const aroAlf = new T.Mesh(new T.RingGeometry(2.1, 2.2, 64), neon('#ff3d9a'));
-  aroAlf.rotation.x = -Math.PI / 2; aroAlf.position.y = 0.015; grupo.add(aroAlf); animados.push(t => aroAlf.material.color.setHSL((t * 0.07) % 1, 0.9, 0.6));
+  aroAlf.rotation.x = -Math.PI / 2; aroAlf.position.y = 0.015; grupo.add(aroAlf); animados.push(t => aroAlf.material.color.setHSL((t * 0.07) % 1, 0.9, 0.6).multiplyScalar(2.2));
   // piso exterior oscuro (para que no se vea el vacío)
   const fuera = new T.Mesh(new T.PlaneGeometry(80, 80), std('#0d0420', { roughness: 1 }));
   fuera.rotation.x = -Math.PI / 2; fuera.position.y = -0.02; grupo.add(fuera);
@@ -57,7 +57,7 @@
     g.shadowColor = '#ff3d9a'; g.shadowBlur = 40; g.fillStyle = '#ffd93d'; g.fillText('ZOO', 330, 135);
     g.shadowColor = '#2ee6d6'; g.fillStyle = '#ffffff'; g.fillText('spechosos', 630, 135);
   });
-  const letrero = new T.Mesh(new T.PlaneGeometry(5, 1.25), new T.MeshBasicMaterial({ map: texLetrero, transparent: true }));
+  const letrero = new T.Mesh(new T.PlaneGeometry(5, 1.25), new T.MeshBasicMaterial({ map: texLetrero, transparent: true, color: new T.Color(2.2, 2.2, 2.2) }));
   letrero.position.set(0, 1.95, -MZ + 0.02); grupo.add(letrero);
 
   // puerta (por aquí se sale a la partida)
@@ -66,9 +66,9 @@
   caja(0.08, 2.1, 0.1, neon('#5effa0'), -5.42, 1.05, -MZ + 0.1, false);
   caja(0.08, 2.1, 0.1, neon('#5effa0'), -3.78, 1.05, -MZ + 0.1, false);
   const texSalida = texto('', 256, 64, g => { g.fillStyle = '#5effa0'; g.font = '900 44px Nunito, sans-serif'; g.textAlign = 'center'; g.fillText('PARTIDA ▶', 128, 46); });
-  const salida = new T.Mesh(new T.PlaneGeometry(1.2, 0.3), new T.MeshBasicMaterial({ map: texSalida, transparent: true }));
+  const salida = new T.Mesh(new T.PlaneGeometry(1.2, 0.3), new T.MeshBasicMaterial({ map: texSalida, transparent: true, color: new T.Color(2.5, 2.5, 2.5) }));
   salida.position.set(-4.6, 2.35, -MZ + 0.04); grupo.add(salida);
-  animados.push(t => { marcoPuerta.material.color.setHSL(0.4, 1, 0.45 + Math.sin(t * 3) * 0.12); });
+  animados.push(t => { marcoPuerta.material.color.setHSL(0.4, 1, 0.45 + Math.sin(t * 3) * 0.12).multiplyScalar(5); });
 
   // ---------- muebles ----------
   // cabina de DJ
@@ -76,7 +76,7 @@
   const frenteDJ = caja(2.9, 0.12, 0.02, neon('#2ee6d6'), 0, 0.75, -3.79, false);
   caja(0.5, 0.06, 0.5, std('#111'), -0.6, 1.03, -4.25); caja(0.5, 0.06, 0.5, std('#111'), 0.6, 1.03, -4.25);
   const discos = [-0.6, 0.6].map(x => { const d = new T.Mesh(new T.CylinderGeometry(0.2, 0.2, 0.03, 24), std('#222', { metalness: 0.5 })); d.position.set(x, 1.08, -4.25); grupo.add(d); return d; });
-  animados.push((t, dt) => { discos.forEach(d => d.rotation.y += dt * 4); frenteDJ.material.color.setHSL((t * 0.1 + 0.5) % 1, 0.9, 0.55); });
+  animados.push((t, dt) => { discos.forEach(d => d.rotation.y += dt * 4); frenteDJ.material.color.setHSL((t * 0.1 + 0.5) % 1, 0.9, 0.55).multiplyScalar(5); });
   obstaculo(0, -4.25, 3.1, 1.0);
   // parlantes
   [-2.1, 2.1].forEach(x => {
@@ -117,7 +117,7 @@
   // máquina arcade (derecha adelante)
   caja(0.9, 1.9, 0.8, std('#ff3d9a'), 6.35, 0.95, 1.6);
   const pantalla = caja(0.04, 0.6, 0.6, neon('#2ee6d6'), 5.88, 1.35, 1.6, false);
-  animados.push(t => pantalla.material.color.setHSL((t * 0.3) % 1, 0.9, 0.6));
+  animados.push(t => pantalla.material.color.setHSL((t * 0.3) % 1, 0.9, 0.6).multiplyScalar(2));
   obstaculo(6.35, 1.6, 1.0, 0.9);
 
   // plantas
@@ -137,15 +137,40 @@
   const pata = new T.Mesh(new T.CylinderGeometry(0.08, 0.2, 0.75, 12), std('#222')); pata.position.set(-5.3, 0.37, 2.3); grupo.add(pata);
   const torta = new T.Mesh(new T.CylinderGeometry(0.28, 0.28, 0.25, 20), std('#ff7eb6')); torta.position.set(-5.3, 0.92, 2.3); grupo.add(torta);
   const vela = new T.Mesh(new T.CylinderGeometry(0.02, 0.02, 0.14, 8), std('#ffd93d')); vela.position.set(-5.3, 1.12, 2.3); grupo.add(vela);
-  const llama = new T.Mesh(new T.SphereGeometry(0.035, 8, 8), neon('#ffb347')); llama.position.set(-5.3, 1.22, 2.3); grupo.add(llama);
+  const llama = new T.Mesh(new T.SphereGeometry(0.035, 8, 8), window.neon('#ffb347', 4)); llama.position.set(-5.3, 1.22, 2.3); grupo.add(llama);
   animados.push(t => llama.scale.setScalar(1 + Math.sin(t * 20) * 0.2));
   obstaculo(-5.3, 2.3, 1.4, 1.4);
 
   // luces del salón
   const luces = [['#ff3d9a', -4, -2], ['#2ee6d6', 4, -2], ['#ffd93d', 0, 3]].map(([c, x, z]) => {
-    const l = new T.PointLight(c, 10, 9); l.position.set(x, 2.4, z); grupo.add(l); return l;
+    const l = new T.PointLight(c, 5, 8); l.position.set(x, 2.4, z); grupo.add(l); return l;
   });
-  animados.push(t => luces.forEach((l, i) => l.intensity = 8 + Math.sin(t * 2 + i * 2) * 3));
+  animados.push(t => luces.forEach((l, i) => l.intensity = 4 + Math.sin(t * 2 + i * 2) * 1.5));
+  // bola disco del salón
+  const bola = new T.Mesh(new T.IcosahedronGeometry(0.4, 1), new T.MeshStandardMaterial({ color: '#ddd', metalness: 1, roughness: 0.12, flatShading: true, emissive: '#2a1a55', envMap: window.reflejos }));
+  bola.position.set(0, 3.6, -0.8); grupo.add(bola);
+  animados.push((t, dt) => bola.rotation.y += dt * 0.7);
+
+  // vestidor: espejo con neón + perchero (aquí te cambias de ropa)
+  const VX = 4.4, VZ = -4.62;
+  caja(1.3, 2.0, 0.12, std('#2b1150'), VX, 1.0, VZ);
+  const texEspejo = texto('', 64, 128, g => { const gr = g.createLinearGradient(0, 0, 64, 128); gr.addColorStop(0, '#d9f6ff'); gr.addColorStop(0.5, '#8fb8ff'); gr.addColorStop(1, '#c9b3ff'); g.fillStyle = gr; g.fillRect(0, 0, 64, 128); g.fillStyle = 'rgba(255,255,255,.55)'; g.beginPath(); g.moveTo(8, 30); g.lineTo(30, 8); g.lineTo(36, 8); g.lineTo(8, 36); g.fill(); });
+  const espejo = new T.Mesh(new T.PlaneGeometry(1.05, 1.75), new T.MeshStandardMaterial({ map: texEspejo, roughness: 0.1, metalness: 0.3, envMap: window.reflejos }));
+  espejo.position.set(VX, 1.0, VZ + 0.065); grupo.add(espejo);
+  const marcoV = [[1.3, 0.06, VX, 2.0], [1.3, 0.06, VX, 0.0]].map(m => caja(m[0], m[1], 0.06, neon('#ff3d9a'), m[2], m[3], VZ + 0.08, false));
+  [-0.65, 0.65].forEach(dx => caja(0.06, 2.0, 0.06, neon('#ff3d9a'), VX + dx, 1.0, VZ + 0.08, false));
+  // perchero con ropa de colores
+  caja(0.05, 1.5, 0.05, std('#ffd93d', { metalness: 0.6, roughness: 0.3 }), VX + 1.05, 0.75, VZ + 0.2);
+  caja(0.05, 1.5, 0.05, std('#ffd93d', { metalness: 0.6, roughness: 0.3 }), VX - 1.05, 0.75, VZ + 0.2);
+  ['#ff4d6d', '#2ee6d6', '#ffd93d', '#8b5cff', '#5effa0'].forEach((c, i) => {
+    const ropa = caja(0.08, 0.5, 0.32, std(c, { roughness: 0.9 }), VX - 0.95 + i * 0.12 + (i > 2 ? 1.62 : 0), 1.1, VZ + 0.22);
+    ropa.rotation.y = 0.2 * (i % 2 ? 1 : -1);
+  });
+  const texVest = texto('', 256, 64, g => { g.fillStyle = '#ff3d9a'; g.font = '900 40px Nunito, sans-serif'; g.textAlign = 'center'; g.fillText('👕 VESTIDOR', 128, 46); });
+  const letVest = new T.Mesh(new T.PlaneGeometry(1.3, 0.33), new T.MeshBasicMaterial({ map: texVest, transparent: true, color: new T.Color(2.5, 2.5, 2.5) }));
+  letVest.position.set(VX, 2.3, VZ + 0.02); grupo.add(letVest);
+  obstaculo(VX, VZ + 0.1, 2.3, 0.5);
+  const VESTIDOR = { x: VX, z: VZ + 1.0 };
 
   // ---------- colisiones ----------
   const R = 0.42; // radio del muñeco
@@ -176,7 +201,7 @@
   }
 
   window.Salon = {
-    grupo, colisionar, lugarLibre, MX, MZ,
+    grupo, colisionar, lugarLibre, MX, MZ, VESTIDOR,
     animar(dt, t) { animados.forEach(f => f(t, dt)); },
   };
 })();

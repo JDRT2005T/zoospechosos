@@ -114,6 +114,18 @@
     <div class="fila"><button class="btn verde" id="sol-si">✅ ¡Súbeme!</button><button class="btn peligro" id="sol-no">❌ No</button></div>
   </div>
   <button class="btn" id="b-bajar">⬇️ Bajarme</button>
+  <button class="btn cerca" id="b-vestidor">👕 Vestirme</button>
+  <div class="hoja vestidor" id="vestidor">
+    <div class="vest-cab"><b>👕 Vestidor</b><small>Cada color es único en la sala</small><button class="btn chico verde" id="v-listo">✔ Listo</button></div>
+    <div class="cats" id="v-cats">
+      <button class="cat activa" data-vcat="color">🎨 Color</button>
+      <button class="cat" data-vcat="animal">🐾 Animal</button>
+      <button class="cat" data-vcat="sombrero">🎩 Sombrero</button>
+      <button class="cat" data-vcat="gafas">🕶️ Gafas</button>
+      <button class="cat" data-vcat="accesorio">🎒 Extra</button>
+    </div>
+    <div class="opciones" id="v-opciones"></div>
+  </div>
   <div class="sala-abajo">
     <div id="joy"><div id="joy-bola"></div></div>
     <div class="derecha">
@@ -121,6 +133,7 @@
         <button data-e="👋">👋</button><button data-e="😂">😂</button><button data-e="😱">😱</button><button data-e="😡">😡</button><button data-e="🤔">🤔</button><button data-e="❤️">❤️</button><button data-e="🔪">🔪</button>
       </div>
       <div class="redondos">
+        <button class="redondo" id="s-vestir" title="Vestidor">👕</button>
         <button class="redondo" id="s-chat" title="Chat">💬</button>
         <button class="redondo" id="s-emo" title="Reacciones">😀</button>
         <button class="redondo" id="s-config" title="Configurar">⚙️</button>
@@ -227,12 +240,7 @@
 <div id="toast"></div>
 <div id="cuenta"></div>
 
-<script src="vendor/three.min.js"></script>
-<script src="vendor/supabase.js"></script>
-<script src="js/personaje.js"></script>
-<script src="js/app.js"></script>
-<script src="js/salon.js"></script>
-<script src="js/sala.js"></script>
-<script src="js/pwa.js"></script>
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
+<script type="module" src="js/arranque.js"></script>
 </body>
 </html>

@@ -306,3 +306,23 @@ input::placeholder { color: rgba(255, 255, 255, .35); }
   .acciones { grid-template-columns: repeat(6, 1fr); }
   .modal.abajo .tarjeta { max-width: 640px; }
 }
+
+/* ===== vestidor dentro de la sala ===== */
+.vestidor { position: fixed; right: max(16px, env(safe-area-inset-right)); top: 64px; height: calc(100% - 76px); margin: 0; width: min(48vw, 460px);
+  display: none; flex-direction: column; padding: 10px; z-index: 6; }
+.vestidor.ver { display: flex; animation: entraDerecha .25s ease; }
+@keyframes entraDerecha { from { transform: translateX(40px); opacity: 0; } }
+.vestidor .opciones { flex: 1; min-height: 0; overflow-y: auto; max-height: none; align-content: start; grid-template-columns: repeat(auto-fill, minmax(66px, 1fr)); }
+.vest-cab { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.vest-cab b { font-family: 'Lilita One'; font-weight: 400; font-size: 20px; }
+.vest-cab small { flex: 1; color: var(--suave); font-weight: 700; font-size: 11px; }
+.op.color.ocupado { opacity: .45; position: relative; }
+.op.color.ocupado i { box-shadow: inset 0 -4px 0 rgba(0, 0, 0, .2); }
+.op.color.ocupado::after { content: attr(data-de); position: absolute; left: 2px; right: 2px; bottom: 4px; font-size: 9px; font-weight: 900; color: #fff; text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 2px #000; }
+.op.color.ocupado::before { content: '🔒'; position: absolute; top: 3px; right: 4px; font-size: 12px; }
+#p-sala.vistiendo .sala-abajo, #p-sala.vistiendo #chat-log, #p-sala.vistiendo #b-vestidor { display: none !important; }
+#b-vestidor { position: fixed; left: 50%; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 8px); transform: translateX(-50%); display: none; z-index: 5;
+  background: linear-gradient(180deg, #ff7ac0, var(--rosa)); color: #fff; box-shadow: 0 5px 0 #a3125c, 0 8px 22px rgba(255, 61, 154, .45); animation: latido 1.4s infinite; }
+#b-vestidor.ver { display: block; }
+@media (orientation: portrait) { .vestidor { left: 12px; right: 12px; top: auto; width: auto; height: 46vh; } }

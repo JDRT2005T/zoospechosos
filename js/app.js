@@ -21,6 +21,29 @@
   const escena = new T.Scene();
   const camara = new T.PerspectiveCamera(40, 1, 0.1, 100);
 
+  // ---- efectos de imagen (solo calidad alta): brillo neón + viñeta ----
+  const P = window.POST;
+  const gl = renderer.capabilities;
+  const hdr = gl.isWebGL2 && (renderer.extensions.has('EXT_color_buffer_float') || renderer.extensions.has('EXT_color_buffer_half_float'));
+  let composer = null, bloom = null;
+  if (hdr) {
+    composer = new P.EffectComposer(renderer, new T.WebGLRenderTarget(2, 2, { type: T.HalfFloatType, samples: 4 }));
+    composer.addPass(new P.RenderPass(escena, camara));
+    bloom = new P.UnrealBloomPass(new T.Vector2(256, 256), 0.7, 0.45, 1.6); // solo brilla lo que pasa de 1 (los neones)
+    composer.addPass(bloom);
+    composer.addPass(new P.ShaderPass({
+      uniforms: { tDiffuse: { value: null }, fuerza: { value: 0.9 } },
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: 'uniform sampler2D tDiffuse; uniform float fuerza; varying vec2 vUv; void main(){ vec4 c = texture2D(tDiffuse, vUv); vec2 d = vUv - 0.5; c.rgb *= clamp(1.0 - dot(d, d) * fuerza, 0.0, 1.0); gl_FragColor = c; }',
+    }));
+    composer.addPass(new P.OutputPass());
+  }
+  // reflejos solo para las cosas metálicas (bolas disco)
+  const pmrem = new T.PMREMGenerator(renderer);
+  window.reflejos = pmrem.fromScene(new P.RoomEnvironment(renderer), 0.04).texture;
+  // material de neón: color más fuerte que 1 para que el bloom lo haga brillar
+  window.neon = (hex, k) => new T.MeshBasicMaterial({ color: new T.Color(hex).multiplyScalar(k || 5) });
+
   // fondo degradado
   (function () {
     const c = document.createElement('canvas'); c.width = 2; c.height = 256;
@@ -56,12 +79,14 @@
   }
   const escenario = new T.Mesh(new T.CylinderGeometry(1.25, 1.35, 0.18, 48), new T.MeshStandardMaterial({ color: '#3a1670', roughness: 0.5 }));
   escenario.position.y = 0.09; escenario.receiveShadow = true; escena.add(escenario);
-  const aro = new T.Mesh(new T.TorusGeometry(1.3, 0.035, 8, 64), new T.MeshBasicMaterial({ color: '#2ee6d6' }));
+  const aro = new T.Mesh(new T.TorusGeometry(1.3, 0.035, 8, 64), neon('#2ee6d6'));
   aro.rotation.x = Math.PI / 2; aro.position.y = 0.18; escena.add(aro);
 
   // bola disco
-  const disco = new T.Mesh(new T.IcosahedronGeometry(0.45, 1), new T.MeshStandardMaterial({ color: '#ddd', metalness: 0.9, roughness: 0.15, flatShading: true, emissive: '#3a2a66' }));
+  const disco = new T.Mesh(new T.IcosahedronGeometry(0.45, 1), new T.MeshStandardMaterial({ color: '#ddd', metalness: 0.9, roughness: 0.15, flatShading: true, emissive: '#3a2a66', envMap: window.reflejos }));
   disco.position.set(0, 4.3, -2); escena.add(disco);
+  // haces de luz de discoteca
+  const haces = ['#ff3d9a', '#2ee6d6', '#ffd93d', '#8b5cff'].map((c, i) => { const h = Part.haz(c, 7, 1.6); h.position.set(-4.5 + i * 3, 7.2, -3); escena.add(h); return h; });
   const cable = new T.Mesh(new T.CylinderGeometry(0.01, 0.01, 3), new T.MeshBasicMaterial({ color: '#555' }));
   cable.position.set(0, 6, -2); escena.add(cable);
 
@@ -81,12 +106,14 @@
     renderer.setPixelRatio(Math.min(devicePixelRatio || 1, calidad === 'alta' ? 2 : 1));
     renderer.shadowMap.enabled = calidad === 'alta';
     luzRosa.visible = luzCian.visible = calidad === 'alta';
+    haces.forEach(h => h.visible = calidad === 'alta' && pantalla !== 'sala');
     escena.traverse(o => { if (o.material) o.material.needsUpdate = true; });
     redimensionar();
   }
   function redimensionar() {
     const w = innerWidth, h = innerHeight;
     renderer.setSize(w, h, false);
+    if (composer) { composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(w, h); }
     camara.aspect = w / h; camara.updateProjectionMatrix();
   }
   addEventListener('resize', redimensionar);
@@ -144,6 +171,20 @@
   addEventListener('pointerup', () => arrastrando = false);
 
   const camLibre = { on: false };
+  escena.add(Part.grupo);
+  // si el celular no aguanta la calidad alta, la bajamos solos
+  let fpsT = 0, fpsN = 0, fpsMalos = 0, fpsAvisado = false;
+  function medirFps(dt) {
+    if (calidad !== 'alta' || fpsAvisado || document.hidden) return;
+    fpsT += dt; fpsN++;
+    if (fpsT < 2) return;
+    const fps = fpsN / fpsT; fpsT = 0; fpsN = 0;
+    fpsMalos = fps < 28 ? fpsMalos + 1 : 0;
+    if (fpsMalos >= 3) {
+      fpsAvisado = true; calidad = 'baja'; guardar('zoo-calidad', calidad); pintarSeg('#seg-calidad', calidad); aplicarCalidad();
+      toast('Bajé la calidad gráfica para que vaya más fluido ⚡');
+    }
+  }
   const reloj = new T.Clock();
   function bucle() {
     requestAnimationFrame(bucle);
@@ -159,8 +200,10 @@
     luzRosa.position.set(Math.sin(t * 0.8) * 3.5, 2.5, Math.cos(t * 0.8) * 3.5);
     luzCian.position.set(Math.sin(t * 0.8 + Math.PI) * 3.5, 2.5, Math.cos(t * 0.8 + Math.PI) * 3.5);
     disco.rotation.y += dt * 0.6;
-    baldosas.forEach((b, i) => b.material.emissiveIntensity = 0.12 + 0.35 * Math.max(0, Math.sin(t * 2.5 + i * 1.7)));
-    aro.material.color.setHSL((t * 0.08) % 1, 0.9, 0.6);
+    const fuerza = calidad === 'alta' && composer ? 0.9 : 0.35;
+    baldosas.forEach((b, i) => b.material.emissiveIntensity = 0.12 + fuerza * Math.max(0, Math.sin(t * 2.5 + i * 1.7)));
+    haces.forEach((h, i) => { h.rotation.z = Math.sin(t * 0.7 + i * 1.3) * 0.45; h.rotation.x = 0.25 + Math.cos(t * 0.5 + i) * 0.25; });
+    aro.material.color.setHSL((t * 0.08) % 1, 0.9, 0.6).multiplyScalar(5);
     const p = geoConf.attributes.position;
     for (let i = 0; i < N; i++) { let y = p.getY(i) - dt * (0.25 + (i % 5) * 0.06); if (y < 0) y = 7; p.setY(i, y); }
     p.needsUpdate = true;
@@ -172,7 +215,9 @@
       miPj.rotation.y = giroUsuario;
       Zoo.animar(miPj, dt, modoPj);
     }
-    renderer.render(escena, camara);
+    Part.actualizar(dt);
+    if (calidad === 'alta' && composer) composer.render(); else renderer.render(escena, camara);
+    medirFps(dt);
   }
 
   // ================= SONIDO =================
@@ -201,6 +246,7 @@
     if (nombre === 'sala' && miPj) { escena.remove(miPj); Zoo.liberar(miPj); miPj = null; }
     if (nombre === 'menu' && !miPj && perfil) ponerMiPj(perfil);
     [piso, pista, escenario, aro, disco, cable, confeti].forEach(o => o.visible = nombre !== 'sala');
+    haces.forEach(h => h.visible = calidad === 'alta' && nombre !== 'sala');
     camLibre.on = nombre === 'sala';
   }
   function toast(txt, ms = 2600) {
@@ -373,6 +419,7 @@
     sb, escena, camara, renderer, sol, ir, toast, bip, abrir, errorBonito, alCuadro,
     get perfil() { return perfil; },
     get pantalla() { return pantalla; },
+    get calidad() { return calidad; },
   };
 
   // ================= INICIO =================
