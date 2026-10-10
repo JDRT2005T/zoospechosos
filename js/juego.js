@@ -94,7 +94,7 @@
     if (Date.now() < enfriaHasta || !objetivo) return;
     const v = S().pjs.get(objetivo); if (!v) return;
     enfriaHasta = Date.now() + S().cfg().enfriamiento * 1000;
-    S().enviar('muerte', { a: miId(), v: objetivo, x: +v.cx.toFixed(2), z: +v.cz.toFixed(2), r: +v.cr.toFixed(2) });
+    S().enviar('muerte', { a: miId(), v: objetivo, x: +v.cx.toFixed(2), z: +v.cz.toFixed(2), r: +v.cr.toFixed(2), tipo: (S().yo && S().yo.muerte) || 'granada' });
   });
 
   // ---- escenario de cine (lejos del mapa): ahí ven la escena el impostor y la víctima ----
@@ -115,108 +115,284 @@
     const luz = new T.PointLight('#ffd1e8', 14, 9); luz.position.set(0, 3.2, 2); set.add(luz);
   })();
 
-  function hacerGranada() {
-    const g = new T.Group();
-    const c = new T.Mesh(new T.SphereGeometry(0.11, 12, 10), new T.MeshToonMaterial({ color: '#3a5a2a' })); c.scale.y = 1.25; g.add(c);
-    const tapa = new T.Mesh(new T.CylinderGeometry(0.05, 0.05, 0.07, 10), new T.MeshToonMaterial({ color: '#888' })); tapa.position.y = 0.15; g.add(tapa);
-    const anilla = new T.Mesh(new T.TorusGeometry(0.05, 0.012, 6, 14), new T.MeshToonMaterial({ color: '#ffd93d' })); anilla.position.set(0.07, 0.17, 0); g.add(anilla);
-    g.position.y = -0.45;
-    return g;
-  }
+  // ================= ANIMACIONES DE MUERTE =================
+  const toon = c => new T.MeshToonMaterial({ color: c });
   function hacerBrillo() {
     const b = new T.Mesh(new T.SphereGeometry(0.62, 18, 14), new T.MeshBasicMaterial({ color: '#ff1a1a', transparent: true, opacity: 0, depthWrite: false }));
     b.scale.set(1, 1.45, 1); b.position.y = 0.95; return b;
   }
   const ropaDe = id => S().jugadores.find(j => j.id === id) || {};
+  const quitar = o => { if (o && o.parent) o.parent.remove(o); };
+  const posVictima = (k, enCine) => enCine ? { x: k.cvx, y: 0, z: SET.z } : { x: k.x, y: 0, z: k.z };
+  function sangreChorro(p, mucho) {
+    if (sangre()) {
+      Part.rafaga(p, { n: mucho ? 60 : 30, colores: ['#b00000', '#e01e37', '#7a0010', '#ff2a3a'], vel: mucho ? 6.5 : 4, arriba: 1.5, grav: 13, vida: 1.3, tam: 0.21, dispersion: 0.4 });
+      Part.rafaga(p, { n: mucho ? 16 : 8, colores: ['#8a0000', '#c1121f'], vel: 3, arriba: 1.2, grav: 9, vida: 1.0, tam: 0.45, crecer: 0.6 });
+    } else { Part.confeti(p); Part.chispas(p); }
+  }
+  function fogonazo(p) {
+    Part.rafaga(p, { n: 4, colores: ['#fff3b0', '#ffb347'], vel: 0.5, vida: 0.22, tam: 1.6, crecer: 1.5, aditivo: true, brillo: 1.6 });
+    Part.impacto(p); Part.humo(p);
+  }
+  const loVeo = k => { const yp = S().yoPos; return soyFantasma() || Mansion.cuartoDe(k.x, k.z) === Mansion.cuartoDe(yp.x, yp.z) || Math.hypot(yp.x - k.x, yp.z - k.z) < 2.5; };
+  function temblor(k, fuerte) {
+    const yp = S().yoPos;
+    if (Math.hypot(yp.x - k.x, yp.z - k.z) < 9 || k.ca) { S().sacudir(fuerte); document.body.classList.add('sacudir'); setTimeout(() => document.body.classList.remove('sacudir'), 500); }
+  }
+  function golpeSonido() { A.bip(90, 0.25, 'sawtooth', 0.09); setTimeout(() => A.bip(60, 0.3, 'square', 0.07), 40); }
+
+  // ---------- 💣 GRANADA ----------
+  function hacerGranada() {
+    const g = new T.Group();
+    const c = new T.Mesh(new T.SphereGeometry(0.11, 12, 10), toon('#3a5a2a')); c.scale.y = 1.25; g.add(c);
+    const tapa = new T.Mesh(new T.CylinderGeometry(0.05, 0.05, 0.07, 10), toon('#888')); tapa.position.y = 0.15; g.add(tapa);
+    const anilla = new T.Mesh(new T.TorusGeometry(0.05, 0.012, 6, 14), toon('#ffd93d')); anilla.position.set(0.07, 0.17, 0); g.add(anilla);
+    g.position.y = -0.45; return g;
+  }
+  // ---------- 🔨 MARTILLO ----------
+  function hacerMartillo() {
+    const g = new T.Group();
+    const palo = new T.Mesh(new T.CylinderGeometry(0.045, 0.05, 1.1, 10), toon('#8b5a3c')); palo.position.y = -0.55; g.add(palo);
+    const cabeza = new T.Mesh(new T.BoxGeometry(0.62, 0.36, 0.36), new T.MeshToonMaterial({ color: '#9aa5b1' })); cabeza.position.y = -1.12; g.add(cabeza);
+    [-0.32, 0.32].forEach(x => { const c = new T.Mesh(new T.BoxGeometry(0.04, 0.38, 0.38), toon('#e63946')); c.position.set(x, -1.12, 0); g.add(c); });
+    g.position.y = -0.3; return g;
+  }
+  // ---------- 🎂 PASTEL EXPLOSIVO ----------
+  function hacerPastel() {
+    const g = new T.Group();
+    const plato = new T.Mesh(new T.CylinderGeometry(0.36, 0.36, 0.03, 20), toon('#ffffff')); g.add(plato);
+    const p1 = new T.Mesh(new T.CylinderGeometry(0.3, 0.3, 0.22, 20), toon('#ff7eb6')); p1.position.y = 0.12; g.add(p1);
+    const crema = new T.Mesh(new T.TorusGeometry(0.28, 0.04, 8, 20), toon('#fff8e7')); crema.rotation.x = Math.PI / 2; crema.position.y = 0.23; g.add(crema);
+    const vela = new T.Mesh(new T.CylinderGeometry(0.025, 0.025, 0.18, 8), toon('#2ee6d6')); vela.position.y = 0.33; g.add(vela);
+    const llama = new T.Mesh(new T.SphereGeometry(0.05, 8, 6), window.neon('#ffb347', 4)); llama.position.y = 0.45; g.add(llama);
+    const mecha = new T.Mesh(new T.SphereGeometry(0.06, 8, 6), window.neon('#ff2e2e', 3)); mecha.position.set(0.2, 0.2, 0.2); g.add(mecha);
+    g.userData = { llama, mecha };
+    g.position.set(0, 1.0, 0.72); return g;
+  }
+  // ---------- 🩸 VARILLA ----------
+  function hacerVarilla() {
+    const g = new T.Group();
+    const v = new T.Mesh(new T.CylinderGeometry(0.05, 0.05, 3.0, 10), new T.MeshToonMaterial({ color: '#b8c0cc' })); v.position.y = 1.5; g.add(v);
+    const punta = new T.Mesh(new T.ConeGeometry(0.085, 0.3, 10), new T.MeshToonMaterial({ color: '#dfe6ee' })); punta.position.y = 3.15; g.add(punta);
+    const roja = new T.Mesh(new T.CylinderGeometry(0.055, 0.055, 1.0, 10), toon('#a4161a')); roja.position.y = 2.5; roja.visible = false; g.add(roja);
+    g.userData = { roja };
+    return g;
+  }
+
+  const ANIMS = {
+    granada: {
+      nombre: 'Granada', frente: false, tMuerte: 2.1, tFin: 2.6,
+      montar(ua, uv) { const g = hacerGranada(); ua.brazos[1].add(g); const b = hacerBrillo(); uv.cuerpo.add(b); return { g, b, todo: [g, b] }; },
+      posar(ua, uv, k, t, pr, alto) {
+        if (ua) {
+          const br = ua.brazos[1];
+          if (t < 0.5) { br.rotation.z = 0.35 + 2.1 * (t / 0.5); br.rotation.x = 0; }
+          else if (t < 0.8) { const q = (t - 0.5) / 0.3; br.rotation.z = 2.45 - 2.1 * q; br.rotation.x = -1.15 * q; ua.cuerpo.rotation.x = 0.25 * q; }
+          else if (t < 2.4) { ua.brazos.forEach((b, i) => { b.rotation.z = (i ? 1 : -1) * 2.7; b.rotation.x = -0.4; }); ua.cuerpo.rotation.x = -0.15; }
+        }
+        pr.g.visible = t < 0.78;
+        if (uv) {
+          if (t >= 0.78 && t < 1.08) { alto(Math.sin((t - 0.78) / 0.3 * Math.PI) * 0.45); uv.ojos.forEach(o => o.scale.set(1.6, 1.6, 1)); }
+          if (t >= 1.08 && t < 2.1) {
+            alto(0); const q = (t - 1.08) / 1.02;
+            uv.cuerpo.scale.set(1 + 0.5 * q, 1 + 0.35 * q, 1 + 0.5 * q);
+            uv.cuerpo.rotation.z = (Math.random() - 0.5) * 0.18 * q;
+            uv.ojos.forEach(o => o.scale.set(1.6 + q, 1.6 + q, 1));
+            pr.b.material.opacity = (0.15 + 0.45 * q) * (0.5 + 0.5 * Math.sin(t * (3 + q * 14) * Math.PI));
+          }
+        }
+      },
+      eventos: [
+        [0.78, k => { S().texto(k.v, '😳‼️'); S().texto(k.a, '🙉'); A.bip(160, 0.12, 'sine', 0.08); setTimeout(() => A.bip(90, 0.1, 'sine', 0.08), 70); if (k.ca) mostrarFrase('😳 ¡¿POR AHÍ?!'); }],
+      ],
+      tick(k, t) { if (t >= 1.08 && t < 2.1 && t > (k.proxBip || 1.08)) { const q = (t - 1.08) / 1.02; A.bip(1900, 0.05, 'square', 0.05); k.proxBip = t + Math.max(0.07, 0.35 * (1 - q)); } },
+      morir(k, color, jug) {
+        explosionSonido(true); temblor(k, 0.9);
+        const p = { x: k.x, y: 0.9, z: k.z };
+        if (loVeo(k)) { fogonazo(p); Part.humo({ x: p.x, y: 1.3, z: p.z }); sangreChorro(p, true); }
+        if (k.cv) { k.cv.visible = false; const c = { x: k.cvx, y: 0.9, z: SET.z }; fogonazo(c); sangreChorro(c, true); lanzarPedazos({ x: k.cvx, z: SET.z }, color, true); mostrarFrase('💥 ¡BOOM!'); }
+        lanzarPedazos(k, color, false); dejarCuerpo(k, jug);
+      },
+    },
+
+    martillo: {
+      nombre: 'Martillazo', frente: false, tMuerte: 1.7, tFin: 2.2,
+      montar(ua) { const g = hacerMartillo(); ua.brazos[1].add(g); return { g, todo: [g] }; },
+      posar(ua, uv, k, t, pr, alto) {
+        if (ua) {
+          const br = ua.brazos[1];
+          if (t < 0.6) { const q = t / 0.6; br.rotation.x = -3.0 * q; br.rotation.z = 0.1; ua.cuerpo.rotation.x = -0.25 * q; }
+          else if (t < 0.72) { const q = (t - 0.6) / 0.12; br.rotation.x = -3.0 + 1.45 * q; ua.cuerpo.rotation.x = -0.25 + 0.6 * q; }
+          else if (t < 1.6) { br.rotation.x = -1.55; ua.cuerpo.rotation.x = 0.35; }
+          else { const q = Math.min(1, (t - 1.6) / 0.4); br.rotation.x = -1.55 * (1 - q); ua.cuerpo.rotation.x = 0.35 * (1 - q); }
+        }
+        if (uv && t >= 0.72) {
+          const q = Math.min(1, (t - 0.72) / 0.08);
+          const tiembla = t < 1.4 ? Math.sin(t * 50) * 0.04 : 0;
+          uv.cuerpo.scale.set(1 + 0.75 * q + tiembla, 1 - 0.86 * q, 1 + 0.75 * q - tiembla);
+          uv.cuerpo.position.y = 0;
+          uv.ojos.forEach(o => o.scale.set(1.9, 0.5, 1));
+          uv.piernas.forEach(l => l.rotation.x = 0); uv.brazos.forEach((b, i) => { b.rotation.z = (i ? -1 : 1) * 1.5; });
+          alto(0);
+        }
+      },
+      eventos: [
+        [0.05, k => { S().texto(k.a, '😈🔨'); if (k.ca) mostrarFrase('🔨 ¡MARTILLAZO!'); }],
+        [0.72, k => {
+          golpeSonido(); temblor(k, 0.7); S().texto(k.v, '💫 ¡PAF!');
+          const p = { x: k.x, y: 0.4, z: k.z };
+          if (loVeo(k)) { Part.impacto(p); sangreChorro(p, false); Part.rafaga(p, { n: 6, tex: '⭐', vel: 1.5, arriba: 1.2, vida: 1.2, tam: 0.3 }); }
+          if (k.cv) { const c = { x: k.cvx, y: 0.4, z: SET.z }; Part.impacto(c); sangreChorro(c, true); Part.rafaga(c, { n: 8, tex: '⭐', vel: 1.5, arriba: 1.2, vida: 1.2, tam: 0.3 }); mostrarFrase('💫 ¡PAF!'); }
+        }],
+      ],
+      morir(k, color, jug) {
+        dejarAplastado(k, color);
+      },
+    },
+
+    pastel: {
+      nombre: 'Pastel explosivo', frente: true, tMuerte: 1.75, tFin: 2.3,
+      montar(ua) { const g = hacerPastel(); ua.cuerpo.add(g); return { g, todo: [g] }; },
+      posar(ua, uv, k, t, pr, alto) {
+        if (ua) {
+          if (t < 1.25) { const q = Math.min(1, t / 0.5); ua.brazos.forEach((b, i) => { b.rotation.x = -1.35 * q; b.rotation.z = (i ? -1 : 1) * 0.15; }); }
+          else { ua.brazos.forEach((b, i) => { b.rotation.z = (i ? 1 : -1) * 2.7; b.rotation.x = -0.4; }); ua.cuerpo.rotation.x = -0.2; }
+          pr.g.visible = t < 1.75;
+          if (t >= 1.25 && pr.g.parent === ua.cuerpo) { // suelta el pastel (queda en el aire frente a la víctima)
+            pr.g.position.z = 0.72 + Math.min(0.15, (t - 1.25) * 0.5);
+          }
+          const u = pr.g.userData;
+          u.llama.scale.setScalar(1 + Math.sin(t * 20) * 0.2 + (t > 1.0 ? (t - 1.0) * 3 : 0));
+          u.mecha.visible = t > 1.0 && Math.sin(t * (10 + (t - 1) * 30)) > 0;
+        }
+        if (uv) {
+          if (t >= 0.6 && t < 1.75) { const q = Math.min(1, (t - 0.6) / 0.4); uv.cuerpo.rotation.x = 0.35 * q; uv.ojos.forEach(o => o.scale.set(1.2, 1.2, 1)); }
+        }
+      },
+      eventos: [
+        [0.05, k => { S().texto(k.a, '🎂 ¡Feliz cumple!'); A.bip(523, 0.15); setTimeout(() => A.bip(659, 0.15), 160); setTimeout(() => A.bip(784, 0.25), 320); if (k.ca) mostrarFrase('🎂 ¡FELIZ CUMPLEAÑOS!'); }],
+        [0.7, k => { S().texto(k.v, '🥰 ¡Gracias!'); }],
+        [1.25, k => { S().texto(k.a, '🙉'); if (k.ca) mostrarFrase('😳 ¿Eso hace bip?'); }],
+      ],
+      tick(k, t) { if (t >= 1.0 && t < 1.75 && t > (k.proxBip || 1.0)) { A.bip(2000, 0.04, 'square', 0.05); k.proxBip = t + Math.max(0.06, 0.25 * (1 - (t - 1) / 0.75)); } },
+      morir(k, color, jug) {
+        explosionSonido(true); temblor(k, 0.9);
+        const fx = Math.sin(k.r), fz = Math.cos(k.r);
+        const p = { x: k.x + fx * 0.4, y: 1.0, z: k.z + fz * 0.4 };
+        const crema = q => Part.rafaga(q, { n: 30, colores: ['#ff7eb6', '#fff8e7', '#8b5a3c', '#2ee6d6'], tex: 'cuadro', vel: 5, arriba: 1.5, grav: 10, vida: 1.4, tam: 0.18, giro: 8 });
+        if (loVeo(k)) { fogonazo(p); crema(p); sangreChorro({ x: k.x, y: 0.9, z: k.z }, true); }
+        if (k.cv) { k.cv.visible = false; const c = { x: k.cvx, y: 1.0, z: SET.z }; fogonazo(c); crema(c); sangreChorro(c, true); lanzarPedazos({ x: k.cvx, z: SET.z }, color, true); mostrarFrase('💥 ¡BOOM DE CUMPLEAÑOS!'); }
+        lanzarPedazos(k, color, false); dejarCuerpo(k, jug);
+      },
+    },
+
+    varilla: {
+      nombre: 'La varilla', frente: false, tMuerte: 2.15, tFin: 2.6,
+      montar(ua, uv) { const g = hacerVarilla(); ua.brazos[1].add(g); g.position.set(0, -0.4, 0.05); g.rotation.x = Math.PI; return { g, uv, todo: [g] }; },
+      posar(ua, uv, k, t, pr, alto) {
+        const g = pr.g;
+        if (ua) {
+          const br = ua.brazos[1];
+          if (t < 0.45) { br.rotation.x = -0.8 * (t / 0.45); }
+          else if (t < 0.8) { br.rotation.x = -0.8 - 0.4 * ((t - 0.45) / 0.35); ua.cuerpo.rotation.x = 0.25; }
+          else { br.rotation.x = -1.2; ua.cuerpo.rotation.x = 0.2; }
+        }
+        // a los 0.45 s la varilla pasa a la víctima: entra por atrás y sale por la boca
+        if (t >= 0.45 && uv && g.parent !== uv.cuerpo) { quitar(g); uv.cuerpo.add(g); g.rotation.set(0.3, 0, 0); }
+        if (uv && g.parent === uv.cuerpo) {
+          const q = Math.min(1, Math.max(0, (t - 0.45) / 0.35));
+          g.position.set(0, -2.9 + 2.3 * q, -0.5 + 0.08 * q);
+          g.userData.roja.visible = q > 0.9 && sangre();
+          if (t >= 0.8 && t < 1.8) {
+            alto(0.35 + Math.sin(t * 30) * 0.03);
+            uv.ojos.forEach(o => o.scale.set(1.8, 1.8, 1));
+            uv.piernas.forEach((l, i) => l.rotation.x = Math.sin(t * 18 + i * 2) * 0.6);
+            uv.brazos.forEach((b, i) => { b.rotation.z = (i ? -1 : 1) * (2.2 + Math.sin(t * 25 + i) * 0.2); });
+          }
+          if (t >= 1.8) {
+            const c = Math.min(1, (t - 1.8) / 0.35);
+            alto(0.35 * (1 - c));
+            uv.cuerpo.rotation.z = c * Math.PI / 2;
+          }
+        }
+      },
+      eventos: [
+        [0.05, k => { S().texto(k.a, '😏'); if (k.ca) mostrarFrase('🩸 La varilla…'); }],
+        [0.8, k => { S().texto(k.v, '😱 ¡AAAGH!'); A.bip(700, 0.4, 'sawtooth', 0.06); setTimeout(() => A.bip(500, 0.5, 'sawtooth', 0.05), 200); temblor(k, 0.5); if (k.ca) mostrarFrase('😱 ¡POR LA BOCA!'); }],
+      ],
+      tick(k, t) {
+        if (t < 0.8 || t > 2.1 || t < (k.proxSangre || 0)) return;
+        k.proxSangre = t + 0.06;
+        const fx = Math.sin(k.r), fz = Math.cos(k.r);
+        const boca = (x, z) => ({ x: x + fx * 0.45, y: 1.45, z: z + fz * 0.45 });
+        const chorro = q => Part.rafaga(q, sangre() ? { n: 3, colores: ['#b00000', '#e01e37', '#7a0010'], vel: 1.4, arriba: 0.5, grav: 10, vida: 0.8, tam: 0.13 } : { n: 2, colores: ['#ff7eb6', '#ffd93d'], tex: 'cuadro', vel: 1.4, arriba: 0.5, grav: 10, vida: 0.8, tam: 0.1 });
+        if (loVeo(k)) chorro(boca(k.x, k.z));
+        if (k.cv) chorro({ x: k.cvx - 0.45, y: 1.45, z: SET.z });
+      },
+      morir(k, color) {
+        golpeSonido();
+        dejarEnsartado(k, color);
+        const vv = S().pjs.get(k.v);
+        if (vv && vv.obj) vv.obj.userData.cuerpo.rotation.z = 0;
+      },
+    },
+  };
+  const MUERTES = Object.keys(ANIMS);
 
   function alMuerte(m) {
     if (!activo || rol(m.a) !== 'i' || !vivo(m.a) || !vivo(m.v) || rol(m.v) === 'i') return;
     const vv = S().pjs.get(m.v), va = S().pjs.get(m.a);
     if (!vv || !va) return;
-    // la víctima se congela; el impostor aparece detrás
+    const tipo = ANIMS[m.tipo] ? m.tipo : 'granada', D = ANIMS[tipo];
+    // la víctima se congela; el impostor aparece detrás (o al frente, si le regala el pastel)
     const fx = Math.sin(m.r), fz = Math.cos(m.r);
-    const kx = m.x - fx * 0.75, kz = m.z - fz * 0.75;
+    const kx = D.frente ? m.x + fx * 1.3 : m.x - fx * 0.75, kz = D.frente ? m.z + fz * 1.3 : m.z - fz * 0.75, kr = D.frente ? m.r + Math.PI : m.r;
     const yp = S().yoPos;
     if (m.v === miId()) { yp.x = m.x; yp.z = m.z; yp.r = m.r; S().enviarPos(true); }
     else { vv.cx = vv.tx = m.x; vv.cz = vv.tz = m.z; vv.cr = vv.tr = m.r; }
-    if (m.a === miId()) { yp.x = kx; yp.z = kz; yp.r = m.r; S().enviarPos(true); }
-    else { va.cx = va.tx = kx; va.cz = va.tz = kz; va.cr = va.tr = m.r; }
-    const k = { a: m.a, v: m.v, x: m.x, z: m.z, r: m.r, t: 0, fase: 0 };
-    // en el mapa (lo ven los demás)
-    k.granada = hacerGranada(); va.obj.userData.brazos[1].add(k.granada);
-    k.brillo = hacerBrillo(); vv.obj.userData.cuerpo.add(k.brillo);
+    if (m.a === miId()) { yp.x = kx; yp.z = kz; yp.r = kr; S().enviarPos(true); }
+    else { va.cx = va.tx = kx; va.cz = va.tz = kz; va.cr = va.tr = kr; }
+    const k = { tipo, a: m.a, v: m.v, x: m.x, z: m.z, r: m.r, t: 0, ev: [], murio: false };
+    k.pm = D.montar(va.obj.userData, vv.obj.userData); // en el mapa (lo ven los demás)
     // en el escenario de cine (lo ven el impostor y la víctima)
     if (m.a === miId() || m.v === miId()) {
       k.ca = Zoo.crear(ropaDe(m.a)); k.cv = Zoo.crear(ropaDe(m.v));
-      k.cv.position.set(-0.6, 0, 0); k.ca.position.set(0.42, 0, 0);
-      k.cv.rotation.y = k.ca.rotation.y = -Math.PI / 2; // miran hacia la izquierda; el brazo derecho del impostor da a la cámara
+      k.cvx = SET.x + (D.frente ? 0.65 : -0.35);
+      k.cv.position.set(k.cvx - SET.x, 0, 0); k.ca.position.set(k.cvx - SET.x + (D.frente ? -1.3 : 0.75), 0, 0);
+      k.cv.rotation.y = -Math.PI / 2; k.ca.rotation.y = D.frente ? Math.PI / 2 : -Math.PI / 2;
       set.add(k.ca); set.add(k.cv); set.visible = true;
       S().reiniciarCamara(); // la cámara salta directo al escenario
-      k.cGranada = hacerGranada(); k.ca.userData.brazos[1].add(k.cGranada);
-      k.cBrillo = hacerBrillo(); k.cv.userData.cuerpo.add(k.cBrillo);
-      $('#cine').classList.add('ver'); setTimeout(() => $('#cine').classList.remove('ver'), 2700);
+      k.pc = D.montar(k.ca.userData, k.cv.userData);
+      $('#cine').classList.add('ver'); setTimeout(() => $('#cine').classList.remove('ver'), D.tFin * 1000 + 100);
     }
     muriendo.set(m.v, k);
     if (m.v === miId()) ZooMisiones.cerrar();
-    S().texto(m.a, '😏');
-  }
-
-  // poses de la escena (sirven para el mapa y para el escenario de cine)
-  function posar(ua, uv, k, t, granada, brillo, ponerAlto) {
-    if (ua) {
-      const br = ua.brazos[1];
-      if (t < 0.5) { br.rotation.z = 0.35 + 2.1 * (t / 0.5); br.rotation.x = 0; }
-      else if (t < 0.8) { const q = (t - 0.5) / 0.3; br.rotation.z = 2.45 - 2.1 * q; br.rotation.x = -1.15 * q; ua.cuerpo.rotation.x = 0.25 * q; }
-      else if (t < 2.4) { ua.brazos.forEach((b, i) => { b.rotation.z = (i ? 1 : -1) * 2.7; b.rotation.x = -0.4; }); ua.cuerpo.rotation.x = -0.15; }
-      else ua.cuerpo.rotation.x = 0;
-    }
-    if (granada) granada.visible = t < 0.78;
-    if (uv) {
-      if (t >= 0.78 && t < 1.08) { ponerAlto(Math.sin((t - 0.78) / 0.3 * Math.PI) * 0.45); uv.ojos.forEach(o => o.scale.set(1.6, 1.6, 1)); }
-      if (t >= 1.08 && t < 2.1) {
-        ponerAlto(0);
-        const q = (t - 1.08) / 1.02;
-        uv.cuerpo.scale.set(1 + 0.5 * q, 1 + 0.35 * q, 1 + 0.5 * q);
-        uv.cuerpo.rotation.z = (Math.random() - 0.5) * 0.18 * q;
-        uv.ojos.forEach(o => o.scale.set(1.6 + q, 1.6 + q, 1));
-        brillo.material.opacity = (0.15 + 0.45 * q) * (0.5 + 0.5 * Math.sin(t * (3 + q * 14) * Math.PI));
-      }
-    }
   }
 
   // ---- animación paso a paso ----
   function animarMuertes(dt) {
     muriendo.forEach((k, vid) => {
-      k.t += dt; const t = k.t;
+      k.t += dt; const t = k.t, D = ANIMS[k.tipo];
       const va = S().pjs.get(k.a), vv = S().pjs.get(k.v);
       const yp = S().yoPos;
-      // mantenerlos en su lugar
       if (k.v === miId()) { yp.x = k.x; yp.z = k.z; yp.r = k.r; }
       else if (vv) { vv.cx = vv.tx = k.x; vv.cz = vv.tz = k.z; vv.cr = vv.tr = k.r; }
-      posar(va && va.obj && va.obj.userData, vv && vv.obj && vv.obj.userData, k, t, k.granada, k.brillo, a => { if (vv) vv.alto = a; });
+      if (!k.murio) D.posar(va && va.obj && va.obj.userData, vv && vv.obj && vv.obj.userData, k, t, k.pm, a => { if (vv) vv.alto = a; });
+      else if (va && va.obj) D.posar(va.obj.userData, null, k, t, k.pm, () => { });
       if (k.ca) {
         Zoo.animar(k.ca, dt, 'quieto'); if (k.cv.visible) Zoo.animar(k.cv, dt, 'quieto');
-        posar(k.ca.userData, k.cv.userData, k, t, k.cGranada, k.cBrillo, a => k.cv.position.y = a);
+        D.posar(k.ca.userData, k.cv.visible ? k.cv.userData : null, k, t, k.pc, a => k.cv.position.y = a);
       }
-      if (t >= 0.78 && k.fase === 0) { // ¡adentro!
-        k.fase = 1;
-        S().texto(k.v, '😳‼️'); S().texto(k.a, '🙉');
-        A.bip(160, 0.12, 'sine', 0.08); setTimeout(() => A.bip(90, 0.1, 'sine', 0.08), 70);
-        if (k.ca) mostrarFrase('😳 ¡¿POR AHÍ?!');
-      }
-      if (t >= 1.08 && t < 2.1 && t > (k.proxBip || 1.08)) { // bip… bip… bipbipbip
-        const q = (t - 1.08) / 1.02;
-        A.bip(1900, 0.05, 'square', 0.05); k.proxBip = t + Math.max(0.07, 0.35 * (1 - q));
-      }
-      if (t >= 2.1 && k.fase === 1) { k.fase = 2; explotar(k); }
-      if (t >= 2.6 && k.fase === 2) { // termina
-        k.fase = 3;
-        if (va && va.obj) va.obj.userData.cuerpo.rotation.x = 0;
-        if (k.granada.parent) k.granada.parent.remove(k.granada);
-        if (k.ca) { set.remove(k.ca); set.remove(k.cv); Zoo.liberar(k.ca); Zoo.liberar(k.cv); if (![...muriendo.values()].some(x => x !== k && x.ca)) set.visible = false; S().reiniciarCamara(); }
+      D.eventos.forEach(([te, fn], i) => { if (t >= te && !k.ev[i]) { k.ev[i] = true; fn(k); } });
+      if (D.tick) D.tick(k, t, dt);
+      if (t >= D.tMuerte && !k.murio) { k.murio = true; morir(k); }
+      if (t >= D.tFin) { // termina
+        if (va && va.obj) { va.obj.userData.cuerpo.rotation.x = 0; }
+        k.pm.todo.forEach(quitar);
+        if (k.ca) { k.pc.todo.forEach(quitar); set.remove(k.ca); set.remove(k.cv); Zoo.liberar(k.ca); Zoo.liberar(k.cv); if (![...muriendo.values()].some(x => x !== k && x.ca)) set.visible = false; S().reiniciarCamara(); }
         muriendo.delete(vid);
         pintarHud();
-        if (S().soyHost()) setTimeout(revisarFin, 2600); // dejar ver la explosión antes del final
+        if (S().soyHost()) setTimeout(revisarFin, 2600); // dejar ver la escena antes del final
       }
     });
   }
@@ -224,48 +400,43 @@
     const f = $('#frase'); f.textContent = txt; f.classList.remove('ver'); void f.offsetWidth; f.classList.add('ver');
   }
 
-  function explotar(k) {
+  // la víctima muere: lo que deja cada animación + se vuelve fantasma
+  function morir(k) {
     const vv = S().pjs.get(k.v);
-    const p = { x: k.x, y: 0.9, z: k.z };
-    const yp = S().yoPos;
-    const cerca = Math.hypot(yp.x - k.x, yp.z - k.z) < 9;
-    explosionSonido(cerca);
-    if (cerca) { S().sacudir(0.9); document.body.classList.add('sacudir'); setTimeout(() => document.body.classList.remove('sacudir'), 500); }
-    const loVeo = soyFantasma() || Mansion.cuartoDe(k.x, k.z) === Mansion.cuartoDe(yp.x, yp.z) || Math.hypot(yp.x - k.x, yp.z - k.z) < 2.5;
-    // fogonazo + humo + chispas (si pasó en otro cuarto, solo se escucha)
-    if (loVeo) Part.rafaga(p, { n: 4, colores: ['#fff3b0', '#ffb347'], vel: 0.5, vida: 0.22, tam: 1.6, crecer: 1.5, aditivo: true, brillo: 1.6 });
-    if (loVeo) { Part.impacto(p); Part.humo(p); Part.humo({ x: p.x, y: 1.3, z: p.z }); }
-    if (!loVeo) { /* nada que mostrar */ } else if (sangre()) {
-      Part.rafaga(p, { n: 45, colores: ['#b00000', '#e01e37', '#7a0010', '#ff2a3a'], vel: 6.5, arriba: 1.5, grav: 13, vida: 1.3, tam: 0.2, dispersion: 0.4 });
-      Part.rafaga(p, { n: 14, colores: ['#8a0000', '#c1121f'], vel: 3, arriba: 1.2, grav: 9, vida: 1.0, tam: 0.45, crecer: 0.6 });
-    } else {
-      Part.confeti(p); Part.confeti({ x: p.x, y: 1.5, z: p.z }); Part.chispas(p);
-    }
-    if (k.cv) { // en el escenario de cine
-      k.cv.visible = false;
-      const c = { x: SET.x - 0.6, y: 0.9, z: SET.z };
-      Part.rafaga(c, { n: 4, colores: ['#fff3b0', '#ffb347'], vel: 0.5, vida: 0.22, tam: 1.6, crecer: 1.5, aditivo: true, brillo: 1.6 });
-      Part.impacto(c); Part.humo(c);
-      if (sangre()) {
-        Part.rafaga(c, { n: 70, colores: ['#b00000', '#e01e37', '#7a0010', '#ff2a3a'], vel: 6.5, arriba: 1.5, grav: 12, vida: 1.3, tam: 0.24, dispersion: 0.4 });
-        Part.rafaga(c, { n: 16, colores: ['#8a0000', '#c1121f'], vel: 3, arriba: 1.3, grav: 9, vida: 1.1, tam: 0.5, crecer: 0.6 });
-      } else { Part.confeti(c); Part.chispas(c); }
-      lanzarPedazos({ x: SET.x - 0.6, z: SET.z }, ropaDe(k.v).color || '#ff9f43', true);
-      mostrarFrase('💥 ¡BOOM!');
-    }
-    // el muñeco desaparece y quedan pedazos
-    const jug = S().jugadores.find(j => j.id === k.v) || {};
-    const color = jug.color || '#ff9f43';
-    lanzarPedazos(k, color, false);
-    dejarCuerpo(k, jug);
-    if (vv && vv.obj) { vv.obj.userData.cuerpo.remove(k.brillo); vv.alto = 0; }
+    const jug = ropaDe(k.v), color = jug.color || '#ff9f43';
+    ANIMS[k.tipo].morir(k, color, jug);
+    if (vv && vv.obj) { k.pm.todo.forEach(o => { if (o.parent === vv.obj.userData.cuerpo) quitar(o); }); vv.alto = 0; }
     muertos.add(k.v);
     hacerFantasma(k.v);
     if (k.v === miId()) setTimeout(() => {
-      const a = $('#aviso-muerte'); a.classList.add('ver');
-      setTimeout(() => a.classList.remove('ver'), 3500);
+      const a = $('#aviso-muerte'); a.querySelector('b').textContent = { granada: '💥 ¡TE EXPLOTARON!', martillo: '🔨 ¡TE APLASTARON!', pastel: '🎂 ¡PASTEL MORTAL!', varilla: '🩸 ¡TE ENSARTARON!' }[k.tipo];
+      a.classList.add('ver'); setTimeout(() => a.classList.remove('ver'), 3500);
       pintarHud();
     }, 600);
+  }
+
+  // ---- restos: aplastado como panqueque ----
+  function dejarAplastado(k, color) {
+    const g = new T.Group(); g.position.set(k.x, 0, k.z); g.rotation.y = k.r;
+    const cuerpo = new T.Mesh(new T.SphereGeometry(0.62, 22, 12), toon(color)); cuerpo.scale.set(1.25, 0.14, 1.25); cuerpo.position.y = 0.09; g.add(cuerpo);
+    [-0.18, 0.18].forEach(x => { // ojitos en X
+      [0.6, -0.6].forEach(rz => { const l = new T.Mesh(new T.BoxGeometry(0.16, 0.03, 0.035), toon('#1b1b24')); l.position.set(x, 0.19, 0.38); l.rotation.y = rz; g.add(l); });
+    });
+    g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    A.escena.add(g); restos.push(g);
+    mancha(k.x, k.z, 1.45, true);
+  }
+  // ---- restos: ensartado con la varilla ----
+  function dejarEnsartado(k, color) {
+    const g = new T.Group(); g.position.set(k.x, 0, k.z); g.rotation.y = k.r;
+    const cuerpo = new T.Mesh(new T.CapsuleGeometry(0.5, 0.45, 8, 16), toon(color)); cuerpo.rotation.z = Math.PI / 2; cuerpo.position.y = 0.5; g.add(cuerpo);
+    const vara = new T.Mesh(new T.CylinderGeometry(0.035, 0.035, 2.4, 8), new T.MeshToonMaterial({ color: sangre() ? '#a4161a' : '#b8c0cc' })); vara.rotation.z = Math.PI / 2; vara.position.y = 0.55; g.add(vara);
+    const punta = new T.Mesh(new T.ConeGeometry(0.06, 0.22, 8), new T.MeshToonMaterial({ color: '#dfe6ee' })); punta.rotation.z = -Math.PI / 2; punta.position.set(1.3, 0.55, 0); g.add(punta);
+    [-0.15, 0.15].forEach(z => { const o = new T.Mesh(new T.SphereGeometry(0.1, 10, 8), toon('#ffffff')); o.position.set(-0.85, 0.75, z); g.add(o); });
+    g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    g.scale.setScalar(0.01); g.userData.aparece = true;
+    A.escena.add(g); restos.push(g);
+    mancha(k.x, k.z, 1.35, true);
   }
 
   // ---- pedazos volando ----
@@ -458,7 +629,8 @@
     ZooMisiones.terminar();
     ZooSabotaje.terminar();
     activo = false; terminando = false; mostrandoRol = false;
-    muriendo.forEach(k => { if (k.granada.parent) k.granada.parent.remove(k.granada); });
+    muriendo.forEach(k => { k.pm.todo.forEach(quitar); if (k.ca) { k.pc.todo.forEach(quitar); set.remove(k.ca); set.remove(k.cv); } });
+    set.visible = false;
     muriendo.clear(); muertos.clear(); limpiarRestos(); anillo.visible = false;
     $('#p-sala').classList.remove('en-juego');
     ['#revelar', '#aviso-muerte'].forEach(s => $(s).classList.remove('ver'));
@@ -496,8 +668,9 @@
   function cine() {
     for (const k of muriendo.values()) {
       if (!k.ca) continue;
-      const atras = k.t > 2.1 ? 1.8 : 0;
-      return { pos: [SET.x - 0.05, 1.45 + atras * 0.4, SET.z + 4.4 + atras], mira: [SET.x - 0.05, 0.95, SET.z] };
+      const atras = k.murio ? 1.6 : 0;
+      const alto = k.tipo === 'varilla' ? 0.45 : 0, lejos = k.tipo === 'varilla' || k.tipo === 'pastel' ? 0.9 : 0, cx = k.tipo === 'pastel' ? SET.x : SET.x - 0.05;
+      return { pos: [cx, 1.45 + alto + atras * 0.4, SET.z + 4.4 + lejos + atras], mira: [cx, 0.95 + alto, SET.z] };
     }
     return null;
   }
@@ -513,7 +686,8 @@
   }
 
   window.ZooJuego = {
-    _dbg: { get roles() { return roles; }, sinEspera() { enfriaHasta = 0; } }, // para pruebas automáticas
+    _dbg: { get roles() { return roles; }, sinEspera() { enfriaHasta = 0; }, get muriendo() { return muriendo; } }, // para pruebas automáticas
+    MUERTES: ['granada', 'martillo', 'pastel', 'varilla'],
     get activo() { return activo; },
     comenzar, terminar, bloqueado, soyFantasma, cine,
     velocidad: () => soyFantasma() ? 1.25 : 1,

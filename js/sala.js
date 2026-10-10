@@ -84,7 +84,7 @@
     sala = { codigo: fila.codigo, host: fila.host, config: fila.config || {} };
     jugadores = []; primeraSync = true; hostAusenteDesde = 0; cargas.clear();
     const p = A.perfil;
-    yo = { id: p.id, apodo: p.apodo, animal: p.animal, color: p.color, sombrero: p.sombrero, gafas: p.gafas, accesorio: p.accesorio, listo: false, desde: Date.now() };
+    yo = { id: p.id, apodo: p.apodo, animal: p.animal, color: p.color, sombrero: p.sombrero, gafas: p.gafas, accesorio: p.accesorio, muerte: p.muerte || 'granada', listo: false, desde: Date.now() };
     Object.assign(yoPos, Salon.lugarLibre(), { r: 0 });
     $('#s-cod').textContent = sala.codigo;
     $('#chat-log').innerHTML = '';
@@ -700,7 +700,13 @@
   }
 
   // ================= VESTIDOR (dentro de la sala) =================
-  const CAMPOS = ['animal', 'color', 'sombrero', 'gafas', 'accesorio'];
+  const MUERTES = [
+    { id: 'granada', nombre: 'Granada', emoji: '💣' },
+    { id: 'martillo', nombre: 'Martillazo', emoji: '🔨' },
+    { id: 'pastel', nombre: 'Pastel bomba', emoji: '🎂' },
+    { id: 'varilla', nombre: 'La varilla', emoji: '🩸' },
+  ];
+  const CAMPOS = ['animal', 'color', 'sombrero', 'gafas', 'accesorio', 'muerte'];
   let vistiendo = false, vCat = 'color', ropaAntes = null;
   const ropaDe = o => { const r = {}; CAMPOS.forEach(k => r[k] = o[k]); return r; };
   const colorDe = c => jugadores.find(j => j.id !== miId() && j.color === c); // ¿quién tiene ese color?
@@ -770,7 +776,7 @@
       });
       return;
     }
-    const lista = { animal: Zoo.ANIMALES, sombrero: Zoo.SOMBREROS, gafas: Zoo.GAFAS, accesorio: Zoo.ACCESORIOS }[vCat];
+    const lista = { animal: Zoo.ANIMALES, sombrero: Zoo.SOMBREROS, gafas: Zoo.GAFAS, accesorio: Zoo.ACCESORIOS, muerte: MUERTES }[vCat];
     lista.forEach(o => {
       const b = document.createElement('button');
       b.className = 'op' + (yo[vCat] === o.id ? ' sel' : '');
