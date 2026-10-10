@@ -289,13 +289,16 @@
   }
 
   // ---------- efectos (animaciones especiales) ----------
-  const DUR = { jutsu_atacante: 1.4, jutsu_victima: 4.6, abrazo: 2.2, cinco: 1.3, empujar_atacante: 0.6, empujar_victima: 0.9, bailar: 5 };
-  const BLOQUEA = { jutsu_atacante: 1.2, jutsu_victima: 2.6, abrazo: 2.0, cinco: 1.0, empujar_atacante: 0.4, empujar_victima: 0.45 };
+  const DUR = { jutsu_atacante: 1.5, jutsu_victima: 4.6, abrazo: 2.2, cinco: 1.3, empujar_atacante: 0.7, empujar_victima: 1.1, bailar: 5, emote: 1.3 };
+  const BLOQUEA = { jutsu_atacante: 1.2, jutsu_victima: 2.6, abrazo: 2.0, cinco: 1.0, empujar_atacante: 0.4, empujar_victima: 0.8 };
+  const suave = x => 1 - Math.pow(1 - Math.min(1, Math.max(0, x)), 3);      // arranca rápido y frena suave
+  const rebote = x => { x = Math.min(1, Math.max(0, x)); const c = 1.70158; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); }; // se pasa un poquito y vuelve
+  const campana = x => Math.sin(Math.min(1, Math.max(0, x)) * Math.PI);
   function ponerEfecto(id, nombre, extra) {
     const v = pjs.get(id); if (!v) return;
-    if (v.obj) { v.obj.userData.cuerpo.rotation.x = 0; v.obj.userData.cuerpo.scale.set(1, 1, 1); }
+    if (v.obj) { const c = v.obj.userData.cuerpo; c.rotation.set(0, 0, 0); c.scale.set(1, 1, 1); }
     v.alto = 0;
-    v.efecto = Object.assign({ n: nombre, t: 0 }, extra || {});
+    v.efecto = Object.assign({ n: nombre, t: 0, una: {} }, extra || {});
   }
   function bloqueado() {
     const v = pjs.get(miId());
@@ -305,66 +308,126 @@
   function estrellas(v, ver) {
     if (!v.estrellas && ver) {
       const g = new T.Group();
-      for (let i = 0; i < 4; i++) {
-        const e = new T.Mesh(new T.OctahedronGeometry(0.09), new T.MeshBasicMaterial({ color: i % 2 ? '#ffd93d' : '#ffffff' }));
-        e.position.set(Math.cos(i / 4 * Math.PI * 2) * 0.45, 0, Math.sin(i / 4 * Math.PI * 2) * 0.45); g.add(e);
+      for (let i = 0; i < 5; i++) {
+        const e = new T.Mesh(new T.OctahedronGeometry(0.09), window.neon(i % 2 ? '#ffd93d' : '#ffffff', 2));
+        e.position.set(Math.cos(i / 5 * Math.PI * 2) * 0.45, 0, Math.sin(i / 5 * Math.PI * 2) * 0.45); g.add(e);
       }
       g.position.y = 2.0; v.obj.add(g); v.estrellas = g;
     }
     if (v.estrellas) v.estrellas.visible = ver;
   }
+  // partículas cada cierto tiempo durante un efecto
+  const cada = (e, clave, seg, fn) => { if ((e.una[clave] || 0) <= e.t) { e.una[clave] = e.t + seg; fn(); } };
+  const unaVez = (e, clave, fn) => { if (!e.una[clave]) { e.una[clave] = 1; fn(); } };
+
   function aplicarEfecto(v, dt, id) {
     const e = v.efecto; if (!e) return;
     e.t += dt;
-    const u = v.obj.userData, c = u.cuerpo, t = e.t;
-    if (t > (DUR[e.n] || 1)) { v.efecto = null; estrellas(v, false); c.rotation.x = 0; c.scale.set(1, 1, 1); u.ojos.forEach(o => o.scale.set(1, 1, 1)); v.alto = 0; return; }
-    const br = u.brazos;
+    const u = v.obj.userData, c = u.cuerpo, t = e.t, br = u.brazos, pi = u.piernas, o = v.obj.position;
+    if (t > (DUR[e.n] || 1)) { v.efecto = null; estrellas(v, false); c.rotation.set(0, 0, 0); c.scale.set(1, 1, 1); u.ojos.forEach(x => x.scale.set(1, 1, 1)); v.alto = 0; return; }
+    const pos = (y) => ({ x: o.x, y: o.y + y, z: o.z });
+
     if (e.n === 'jutsu_atacante') {
-      if (t < 0.75) { // sello de manos
-        br.forEach((b, i) => { b.rotation.x = -1.35; b.rotation.z = (i ? -1 : 1) * 0.55; });
-        c.rotation.x = -0.05;
-      } else { // ¡golpe!
-        const k = Math.min(1, (t - 0.75) / 0.12);
-        br.forEach((b, i) => { b.rotation.x = -1.35 - 0.9 * k; b.rotation.z = (i ? -1 : 1) * 0.5; });
-        c.rotation.x = 0.3 * k;
+      if (t < 0.75) { // sello de manos cargando chakra
+        const tiembla = Math.sin(t * 60) * 0.04 * suave(t / 0.4);
+        br.forEach((b, i) => { b.rotation.x = -1.35; b.rotation.z = (i ? -1 : 1) * 0.6 + tiembla; });
+        c.rotation.x = -0.08; c.scale.set(1, 0.96 + campana(t / 0.75) * 0.06, 1);
+        cada(e, 'aura', 0.08, () => Part.rafaga(pos(0.4), { n: 2, colores: ['#2ee6d6', '#7fd3ff'], vel: 0.6, arriba: 2, vida: 0.6, tam: 0.18, aditivo: true, brillo: 2 }));
+      } else { // ¡golpe con estocada!
+        const k = rebote((t - 0.75) / 0.18);
+        br.forEach((b, i) => { b.rotation.x = -1.35 - 1.1 * k; b.rotation.z = (i ? -1 : 1) * 0.45; });
+        c.rotation.x = 0.45 * k * (1 - suave((t - 1.1) / 0.4));
       }
     } else if (e.n === 'jutsu_victima') {
-      if (t < 0.75) { u.ojos.forEach(o => o.scale.set(1.3, 1.3, 1)); } // ojos de susto
-      else if (t < 2.1) {
-        u.ojos.forEach(o => o.scale.set(1, o.scale.y, 1));
+      if (t < 0.75) { // susto: se aprieta todo
+        u.ojos.forEach(x => x.scale.set(1.35, 1.35, 1));
+        c.scale.set(1 - 0.04 * campana(t * 6), 1.06, 1 - 0.04 * campana(t * 6));
+      } else if (t < 2.1) { // vuela dando vueltas con estela
+        u.ojos.forEach(x => x.scale.set(1, x.scale.y, 1)); c.scale.set(1, 1, 1);
         const s = (t - 0.75) / 1.35;
         v.alto = 4 * 3.4 * s * (1 - s);
         c.rotation.x = s * Math.PI * 4;
-        br.forEach((b, i) => b.rotation.z = (i ? -1 : 1) * 2.5);
-        u.piernas.forEach(l => l.rotation.x = 0.8);
-      } else {
-        v.alto = 0; c.rotation.x = 0;
-        const s = Math.min(1, (t - 2.1) / 0.25);
-        c.scale.set(1 + 0.25 * (1 - s), 1 - 0.35 * (1 - s), 1 + 0.25 * (1 - s));
-        c.rotation.z = Math.sin(t * 9) * 0.12;
-        estrellas(v, true);
-        v.estrellas.rotation.y += dt * 5;
+        br.forEach((b, i) => b.rotation.z = (i ? -1 : 1) * (2.3 + Math.sin(t * 30) * 0.3));
+        pi.forEach((l, i) => l.rotation.x = Math.sin(t * 25 + i * 3) * 0.9);
+        cada(e, 'estela', 0.05, () => Part.rafaga(pos(0.9), { n: 1, colores: ['#ffd93d', '#ffffff'], tex: 'chispa', vel: 0.2, vida: 0.5, tam: 0.3, aditivo: true, brillo: 2, giro: 6 }));
+      } else { // aterriza rebotando y queda mareado
+        c.rotation.x = 0;
+        const s = t - 2.1;
+        v.alto = s < 0.45 ? Math.abs(Math.sin(s / 0.45 * Math.PI * 2)) * 0.35 * (1 - s / 0.45) : 0;
+        unaVez(e, 'cae', () => Part.caida(pos(0.1)));
+        const ap = Math.max(0, 1 - s / 0.25);
+        c.scale.set(1 + 0.3 * ap, 1 - 0.4 * ap, 1 + 0.3 * ap);
+        c.rotation.z = Math.sin(t * 9) * 0.14;
+        u.ojos.forEach(x => x.scale.set(1, 0.4 + Math.abs(Math.sin(t * 4)) * 0.6, 1));
+        estrellas(v, true); v.estrellas.rotation.y += dt * 5;
       }
     } else if (e.n === 'abrazo') {
-      br.forEach((b, i) => { b.rotation.x = -1.3; b.rotation.z = (i ? 1 : -1) * 0.6; });
-      c.rotation.z = Math.sin(t * 6) * 0.06;
+      const entra = suave(t / 0.35), sale = 1 - suave((t - 1.8) / 0.4), k = entra * sale;
+      br.forEach((b, i) => { b.rotation.x = -1.45 * k; b.rotation.z = (i ? 1 : -1) * 0.95 * k + (i ? -1 : 1) * 0.35 * (1 - k); });
+      c.rotation.x = 0.22 * k;
+      const apreton = campana((t - 0.6) / 0.25) + campana((t - 1.2) / 0.25);
+      c.scale.set(1 + 0.08 * apreton, 1 - 0.06 * apreton, 1 + 0.08 * apreton);
+      c.rotation.z = Math.sin(t * 5) * 0.07 * k;
+      u.ojos.forEach(x => x.scale.set(1, 1 - 0.75 * k * (t > 0.4 && t < 1.8 ? 1 : 0), 1)); // ojitos cerrados de felicidad
+      cada(e, 'amor', 0.45, () => Part.rafaga(pos(1.8), { n: 2, tex: '💖', vel: 0.6, arriba: 1.5, vida: 1.1, tam: 0.28, dispersion: 0.3 }));
     } else if (e.n === 'cinco') {
-      const k = Math.min(1, t / 0.3);
-      br[1].rotation.z = 0.35 + 2.3 * k; br[1].rotation.x = -0.6 * k;
-      if (t > 0.45 && t < 0.75) v.alto = Math.sin((t - 0.45) / 0.3 * Math.PI) * 0.4; else v.alto = 0;
+      if (t < 0.3) { const k = suave(t / 0.3); br[1].rotation.z = 0.35 + 0.6 * k; br[1].rotation.x = 0.7 * k; c.rotation.x = -0.15 * k; } // toma impulso
+      else if (t < 0.45) { const k = suave((t - 0.3) / 0.15); br[1].rotation.z = 0.95 + 1.75 * k; br[1].rotation.x = 0.7 - 1.3 * k; c.rotation.x = -0.15 + 0.3 * k; }
+      else { br[1].rotation.z = 2.7; br[1].rotation.x = -0.6; br[0].rotation.z = -0.35 - 2.2 * campana((t - 0.6) / 0.6); c.rotation.x = 0.15 * (1 - suave((t - 0.45) / 0.4)); }
+      v.alto = t > 0.45 && t < 0.85 ? campana((t - 0.45) / 0.4) * 0.45 : 0;
+      if (t > 0.85 && t < 1.0) { const s = campana((t - 0.85) / 0.15); c.scale.set(1 + 0.15 * s, 1 - 0.2 * s, 1 + 0.15 * s); } else c.scale.set(1, 1, 1);
     } else if (e.n === 'empujar_atacante') {
-      const k = Math.sin(Math.min(1, t / 0.6) * Math.PI);
-      br.forEach(b => { b.rotation.x = -1.5 * k; b.rotation.z *= 0.5; });
-      c.rotation.x = 0.25 * k;
+      const k = t < 0.15 ? suave(t / 0.15) : 1 - suave((t - 0.25) / 0.45);
+      br.forEach(b => { b.rotation.x = -1.7 * k; b.rotation.z *= 0.4; });
+      c.rotation.x = 0.45 * k;
+      c.scale.set(1, 1 - 0.08 * k, 1 + 0.1 * k);
     } else if (e.n === 'empujar_victima') {
-      const k = Math.sin(Math.min(1, t / 0.9) * Math.PI);
-      c.rotation.x = -k * 0.5;
-      br.forEach((b, i) => b.rotation.z = (i ? -1 : 1) * (0.35 + 1.5 * k));
+      if (t < 0.6) { // sale volando de espaldas dando una voltereta
+        const s = t / 0.6;
+        v.alto = 4 * 0.7 * s * (1 - s);
+        c.rotation.x = -s * Math.PI * 2;
+        br.forEach((b, i) => b.rotation.z = (i ? -1 : 1) * (0.5 + 1.8 * campana(s)));
+        pi.forEach(l => l.rotation.x = -0.8 * campana(s));
+      } else { // cae aplastado y se sacude
+        c.rotation.x = 0; v.alto = 0;
+        unaVez(e, 'cae', () => { Part.caida(pos(0.1)); A.bip(150, 0.12, 'square', 0.05); });
+        const s = Math.max(0, 1 - (t - 0.6) / 0.3);
+        c.scale.set(1 + 0.3 * s, 1 - 0.4 * s, 1 + 0.3 * s);
+        c.rotation.z = Math.sin(t * 30) * 0.15 * s;
+      }
+    } else if (e.n === 'bailar') { // 4 pasos de baile que se van turnando
+      const paso = Math.floor(t / 1.25) % 4, f = (t % 1.25) / 1.25;
+      c.rotation.set(0, 0, 0);
+      if (paso === 0) { // disco 🕺
+        const lado = Math.sin(f * Math.PI * 4) > 0 ? 1 : 0;
+        br[0].rotation.z = lado ? -2.5 : -0.4; br[1].rotation.z = lado ? 0.4 : 2.5; br.forEach(b => b.rotation.x = -0.3);
+        c.rotation.z = Math.sin(f * Math.PI * 4) * 0.15; v.alto = Math.abs(Math.sin(f * Math.PI * 4)) * 0.08;
+      } else if (paso === 1) { // robot 🤖
+        const g = Math.floor(f * 8) % 2;
+        br.forEach((b, i) => { b.rotation.x = -1.5 + (g === i ? 0.6 : 0); b.rotation.z = (i ? 1 : -1) * 0.3; });
+        c.rotation.y = (Math.floor(f * 4) % 2 ? 1 : -1) * 0.4; v.alto = 0;
+      } else if (paso === 2) { // vuelta 🌀
+        c.rotation.y = f * Math.PI * 2; br.forEach((b, i) => { b.rotation.z = (i ? 1 : -1) * 1.5; b.rotation.x = 0; }); v.alto = campana(f) * 0.15;
+      } else { // salto y aplauso 👏
+        v.alto = Math.abs(Math.sin(f * Math.PI * 2)) * 0.4;
+        const aplauso = Math.abs(Math.sin(f * Math.PI * 4));
+        br.forEach((b, i) => { b.rotation.z = (i ? 1 : -1) * (2.0 + aplauso * 0.5); b.rotation.x = -0.4; });
+        cada(e, 'nota', 0.6, () => Part.notas(pos(2)));
+      }
+    } else if (e.n === 'emote') { // pequeño gesto con cada reacción
+      const k = campana(t / 1.3);
+      if (e.e === '👋') { br[1].rotation.z = 2.4 * suave(t / 0.2) + Math.sin(t * 16) * 0.35; br[1].rotation.x = -0.2; }
+      else if (e.e === '😂') { c.rotation.z = Math.sin(t * 28) * 0.12 * k; c.scale.set(1 + 0.05 * k, 1 - 0.05 * Math.abs(Math.sin(t * 20)), 1); br.forEach(b => b.rotation.x = -0.8 * k); }
+      else if (e.e === '😱') { v.alto = campana(t / 0.45) * 0.4; br.forEach((b, i) => b.rotation.z = (i ? 1 : -1) * 2.6 * k); u.ojos.forEach(x => x.scale.set(1.5, 1.5, 1)); }
+      else if (e.e === '😡') { v.alto = Math.abs(Math.sin(t * 14)) * 0.08 * k; c.rotation.x = 0.2 * k; br.forEach((b, i) => { b.rotation.z = (i ? 1 : -1) * 0.2; b.rotation.x = Math.sin(t * 14 + i * 3) * 0.6 * k; }); u.ojos.forEach(x => x.scale.set(1, 0.55, 1)); cada(e, 'humo', 0.3, () => Part.rafaga(pos(1.9), { n: 2, colores: ['#cccccc'], vel: 0.8, arriba: 1.5, vida: 0.6, tam: 0.25, crecer: 2 })); }
+      else if (e.e === '🤔') { br[1].rotation.x = -1.9 * suave(t / 0.25); br[1].rotation.z = 0.7; c.rotation.z = 0.15 * k; }
+      else if (e.e === '❤️') { br.forEach((b, i) => { b.rotation.x = -1.3 * k; b.rotation.z = (i ? 1 : -1) * 0.9 * k; }); cada(e, 'amor', 0.3, () => Part.corazones(pos(1.7))); }
+      else if (e.e === '🔪') { br[1].rotation.x = -2.6 * suave(t / 0.25); c.rotation.x = 0.25 * k; u.ojos.forEach(x => x.scale.set(1, 0.45, 1)); }
     }
     // movimientos que el dueño hace sobre su propia posición
     if (id === miId() && e.dir) {
       if (e.n === 'jutsu_victima' && t > 0.75 && t < 2.1) mover(e.dir.x * 1.8 * dt / 1.35, e.dir.z * 1.8 * dt / 1.35);
-      if (e.n === 'empujar_victima' && t < 0.35) mover(e.dir.x * 1.7 * dt / 0.35, e.dir.z * 1.7 * dt / 0.35);
+      if (e.n === 'empujar_victima' && t < 0.6) mover(e.dir.x * 2.0 * dt / 0.6, e.dir.z * 2.0 * dt / 0.6);
     }
   }
   function mover(dx, dz) { yoPos.x += dx; yoPos.z += dz; mundo().colisionar(yoPos); enviarPos(); }
@@ -651,6 +714,7 @@
     const b = document.createElement('div'); b.className = 'burbuja'; b.textContent = e;
     v.etiqueta.appendChild(b); setTimeout(() => b.remove(), 2400);
     A.bip(500 + Math.random() * 400, 0.07, 'square', 0.03);
+    if ((!v.efecto || v.efecto.n === 'emote') && !cargas.has(id)) ponerEfecto(id, 'emote', { e }); // el muñeco hace el gesto
   }
   let ultimoEmote = 0;
   $$('#emotes button').forEach(b => b.onclick = () => {
