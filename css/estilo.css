@@ -485,3 +485,16 @@ input::placeholder { color: rgba(255, 255, 255, .35); }
 #vent-destinos .btn { padding: 8px 12px; font-size: 14px; }
 .tj.chico { padding: 10px 4px; }
 .tj:disabled { opacity: .45; }
+
+/* ===== mapa en vivo ===== */
+#mapa-vivo { position: fixed; left: 50%; top: calc(max(12px, env(safe-area-inset-top)) + 34px); transform: translateX(-50%); z-index: 7; display: none; flex-direction: column; gap: 4px;
+  background: rgba(10, 4, 22, .55); border: 2px solid rgba(255, 255, 255, .18); border-radius: 14px; padding: 6px; pointer-events: none !important; backdrop-filter: blur(2px); }
+#mapa-vivo.ver { display: flex; animation: aparecer .2s; }
+#mapa-vivo canvas { opacity: .88; border-radius: 8px; display: block; }
+.mv-cab { display: flex; align-items: center; gap: 8px; }
+.mv-cab b { font-family: 'Lilita One'; font-weight: 400; font-size: 15px; }
+.mv-cab .mapa-ley { flex: 1; font-size: 11px; }
+.mv-cab .mapa-ley i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin: 0 3px 0 8px; vertical-align: middle; }
+.mapa-ley i.yo { background: #2ee6d6; } .mapa-ley i.ms { background: #ffd93d; } .mapa-ley i.sb { background: #ff2e2e; }
+#mapa-cerrar { pointer-events: auto; width: 30px; height: 30px; font-size: 14px; border-radius: 9px; }
+#b-mapa.on { background: var(--morado); }

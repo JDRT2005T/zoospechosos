@@ -243,13 +243,9 @@
   </div>
 </div>
 
-<div class="modal" id="m-mapa">
-  <div class="tarjeta ancha mapa-tarjeta">
-    <h3>🗺️ Mansión Fiesta</h3>
-    <canvas id="mapa-lienzo"></canvas>
-    <p class="mapa-ley"><span class="yo"></span> Tú &nbsp; <span class="ms"></span> Tus misiones &nbsp; <span class="pu"></span> Puertas</p>
-    <button class="btn sec cerrar">Cerrar</button>
-  </div>
+<div id="mapa-vivo">
+  <div class="mv-cab"><b>🗺️ Mansión Fiesta</b><span class="mapa-ley"><i class="yo"></i>Tú <i class="ms"></i>Misiones <i class="sb"></i>Sabotaje</span><button class="icono" id="mapa-cerrar">✕</button></div>
+  <canvas id="mapa-lienzo"></canvas>
 </div>
 
 <div id="toast"></div>
@@ -264,8 +260,8 @@
 <div id="final"><div class="f-caja"><h2 id="f-tit"></h2><div id="f-lista"></div><p id="f-premio"></p><small>Volviendo al lobby…</small></div></div>
 
 <script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
-<script>window.ZOO_VERSION = '3B.4'; // cambiar en cada actualización: obliga al celular a bajar los archivos nuevos</script>
-<script type="module" src="js/arranque.js?v=3B.4"></script>
+<script>window.ZOO_VERSION = '3B.5'; // cambiar en cada actualización: obliga al celular a bajar los archivos nuevos</script>
+<script type="module" src="js/arranque.js?v=3B.5"></script>
 <script>
   // Plan B: navegadores viejos sin "importmap" cargan la versión simple (sin efectos)
   (function () {

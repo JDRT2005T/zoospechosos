@@ -216,7 +216,8 @@
       Zoo.animar(miPj, dt, modoPj);
     }
     Part.actualizar(dt);
-    if (calidad === 'alta' && composer) composer.render(); else renderer.render(escena, camara);
+    // en la partida no hay brillo (encandilaba): se ve como en calidad baja, más limpio
+    if (calidad === 'alta' && composer && !window.sinBrillo) composer.render(); else renderer.render(escena, camara);
     medirFps(dt);
   }
 

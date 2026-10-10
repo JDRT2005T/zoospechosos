@@ -95,7 +95,7 @@
     tareas = t || {}; roles = r || {}; hechos = {}; miId = id; activo = true;
     rehacerMarcas();
   }
-  function terminar() { activo = false; extras = []; cerrar(); marcas.clear(); pendientes = []; flechaG.visible = false; $('#b-usar').hidden = true; }
+  function terminar() { activo = false; extras = []; abrirMapa(false); cerrar(); marcas.clear(); pendientes = []; flechaG.visible = false; $('#b-usar').hidden = true; }
 
   // ---------- estaciones extra (arreglar sabotajes) ----------
   let extras = []; // [{ x, z, e, tit, j, o, alListo }]
@@ -307,30 +307,49 @@
     },
   };
 
-  // ---------- mapa ----------
-  function dibujarMapa(yp, otros) {
-    const cv = $('#mapa-lienzo'), P = Mansion.PLANO, F = P.length, C = P[0].length;
-    const tam = Math.floor(Math.min((innerWidth - 60) / C, (innerHeight - 190) / F));
-    cv.width = C * tam; cv.height = F * tam;
+  // ---------- mapa en vivo (se actualiza mientras caminas) ----------
+  let mapaAbierto = false, fondoMapa = null, tamMapa = 0, ultMapa = 0;
+  function fondo(tam) { // el plano se dibuja una sola vez por tamaño
+    const P = Mansion.PLANO, F = P.length, C = P[0].length;
+    const cv = document.createElement('canvas'); cv.width = C * tam; cv.height = F * tam;
     const g = cv.getContext('2d');
-    g.fillStyle = '#0d0420'; g.fillRect(0, 0, cv.width, cv.height);
     for (let f = 0; f < F; f++) for (let c = 0; c < C; c++) {
       const ch = P[f][c]; if (ch === '.') continue;
       const k = Mansion.zonaDe((c + 0.5) * 2 - Mansion.MX, (f + 0.5) * 2 - Mansion.MZ);
-      g.fillStyle = ch === '+' ? '#5effa0' : (k >= 'a' && k <= 'z') ? '#6b1a33' : (Mansion.AREAS[k] ? Mansion.AREAS[k].c[0] : '#333');
+      g.fillStyle = ch === '+' ? '#3ccf7f' : (k >= 'a' && k <= 'z') ? '#6b1a33' : (Mansion.AREAS[k] ? Mansion.AREAS[k].c[0] : '#333');
       g.fillRect(c * tam, f * tam, tam, tam);
     }
-    g.font = `900 ${Math.max(9, tam * 0.55)}px Nunito, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = `900 ${Math.max(8, tam * 0.5)}px Nunito, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
     Object.entries(Mansion.RECT).forEach(([k, r]) => {
       if (k >= 'a' && k <= 'z') return;
       const x = (r.cx + Mansion.MX) / 2 * tam, y = (r.cz + Mansion.MZ) / 2 * tam;
-      g.fillStyle = 'rgba(0,0,0,.55)'; g.fillText(Mansion.AREAS[k].n, x + 1, y + 1); g.fillStyle = '#fff'; g.fillText(Mansion.AREAS[k].n, x, y);
+      g.fillStyle = 'rgba(0,0,0,.6)'; g.fillText(Mansion.AREAS[k].n, x + 1, y + 1); g.fillStyle = '#fff'; g.fillText(Mansion.AREAS[k].n, x, y);
     });
-    const punto = (x, z, col, r) => { g.fillStyle = col; g.beginPath(); g.arc((x + Mansion.MX) / 2 * tam, (z + Mansion.MZ) / 2 * tam, r, 0, 7); g.fill(); };
-    pendientes.forEach(p => { punto(p.x, p.z, '#3a1d00', tam * 0.45); punto(p.x, p.z, '#ffd93d', tam * 0.35); });
-    punto(yp.x, yp.z, '#ffffff', tam * 0.55); punto(yp.x, yp.z, '#2ee6d6', tam * 0.4);
+    return cv;
   }
-  $('#b-mapa').addEventListener('click', () => { dibujarMapa(ZooSala.interno.yoPos); A.abrir('#m-mapa'); });
+  function dibujarMapa(yp, t) {
+    const cv = $('#mapa-lienzo'), P = Mansion.PLANO, F = P.length, C = P[0].length;
+    const tam = Math.max(4, Math.floor(Math.min(innerWidth * 0.62 / C, (innerHeight - 120) / F)));
+    if (tam !== tamMapa || !fondoMapa) { tamMapa = tam; fondoMapa = fondo(tam); cv.width = C * tam; cv.height = F * tam; }
+    const g = cv.getContext('2d');
+    g.clearRect(0, 0, cv.width, cv.height); g.drawImage(fondoMapa, 0, 0);
+    const punto = (x, z, col, r) => { g.fillStyle = col; g.beginPath(); g.arc((x + Mansion.MX) / 2 * tam, (z + Mansion.MZ) / 2 * tam, r, 0, 7); g.fill(); };
+    pendientes.forEach(p => { punto(p.x, p.z, '#3a1d00', tam * 0.45); punto(p.x, p.z, '#ffd93d', tam * 0.33); });
+    extras.forEach(p => { const lat = 0.35 + Math.abs(Math.sin(t * 6)) * 0.25; punto(p.x, p.z, '#ff2e2e', tam * lat); });
+    // yo: punto que late + flechita hacia dónde miro
+    const px = (yp.x + Mansion.MX) / 2 * tam, py = (yp.z + Mansion.MZ) / 2 * tam;
+    g.strokeStyle = 'rgba(46,230,214,.6)'; g.lineWidth = 2; g.beginPath(); g.arc(px, py, tam * (0.6 + Math.abs(Math.sin(t * 4)) * 0.4), 0, 7); g.stroke();
+    punto(yp.x, yp.z, '#ffffff', tam * 0.5); punto(yp.x, yp.z, '#2ee6d6', tam * 0.38);
+    g.strokeStyle = '#ffffff'; g.lineWidth = 2; g.beginPath(); g.moveTo(px, py); g.lineTo(px + Math.sin(yp.r) * tam, py + Math.cos(yp.r) * tam); g.stroke();
+  }
+  function abrirMapa(si) { mapaAbierto = si; $('#mapa-vivo').classList.toggle('ver', si); $('#b-mapa').classList.toggle('on', si); }
+  $('#b-mapa').addEventListener('click', () => abrirMapa(!mapaAbierto));
+  $('#mapa-cerrar').addEventListener('click', () => abrirMapa(false));
+  A.alCuadro.push((dt, t) => {
+    if (!mapaAbierto || !activo) return;
+    if (t - ultMapa < 0.066) return; // unas 15 veces por segundo
+    ultMapa = t; dibujarMapa(ZooSala.interno.yoPos, t);
+  });
 
   window.ZooMisiones = {
     CAT, asignar, iniciar, terminar, cuadro, progreso, alHecho, abierta, cerrar, setExtras,

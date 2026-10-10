@@ -17,13 +17,14 @@
   const cerradas = new Map();     // cuarto -> hasta cuándo
   let enfriaHasta = 0;
   const enVent = new Map();       // jugador -> alcantarilla
+  const animV = new Map();        // jugador -> { tipo: 'entra'|'sale', t } (animación de la trampilla)
   let miVent = null;
   const miId = () => S().miId();
   const soyImp = () => roles[miId()] === 'i';
   const fantasma = () => window.ZooJuego && ZooJuego.soyFantasma();
 
   function iniciar(r) {
-    activo = true; roles = r || {}; sab = null; cerradas.clear(); enVent.clear(); miVent = null;
+    activo = true; roles = r || {}; sab = null; cerradas.clear(); enVent.clear(); animV.clear(); miVent = null;
     enfriaHasta = Date.now() + 15000;
     Mansion.abrirTodas();
     pintar();
@@ -152,6 +153,7 @@
   function alVent(m) {
     if (!activo) return;
     if (m.en) enVent.set(m.id, m.v); else enVent.delete(m.id);
+    if (!m.mover) animV.set(m.id, { tipo: m.en ? 'entra' : 'sale', t: 0 });
     if (!m.mover) {
       Mansion.animarVent(m.v);
       const v = Mansion.VENTS[m.v], yp = S().yoPos;
@@ -206,7 +208,29 @@
         .on('broadcast', { event: 'arreglo' }, ({ payload }) => alArreglo(payload))
         .on('broadcast', { event: 'vent' }, ({ payload }) => alVent(payload));
     },
-    enVent: id => enVent.has(id),
+    // mientras se mete en la trampilla todavía se ve
+    enVent: id => enVent.has(id) && !(animV.has(id) && animV.get(id).tipo === 'entra'),
+    // pose del que entra/sale de la alcantarilla (lo llama juego.js en cada cuadro)
+    posar(v, id, dt) {
+      const a = animV.get(id); if (!a || !v.obj) return;
+      a.t += dt;
+      const c = v.obj.userData.cuerpo, t = a.t;
+      if (a.tipo === 'entra') { // salta y se clava de cabeza girando
+        if (t > 0.6) { animV.delete(id); c.scale.set(1, 1, 1); c.rotation.set(0, 0, 0); v.alto = 0; return; }
+        const alto = t < 0.25 ? Math.sin(t / 0.25 * Math.PI / 2) * 0.7 : 0.7 - (t - 0.25) / 0.35 * 2.2;
+        v.alto = alto; v.obj.position.y = alto;
+        const enc = t < 0.25 ? 1 : Math.max(0.15, 1 - (t - 0.25) / 0.35 * 0.85);
+        c.scale.set(enc, 1 + (1 - enc) * 0.5, enc); c.rotation.y = t * 18; c.rotation.x = t > 0.25 ? Math.PI * 0.9 : 0;
+      } else { // sale disparado de la trampilla
+        if (t > 0.7) { animV.delete(id); c.scale.set(1, 1, 1); c.rotation.set(0, 0, 0); v.alto = 0; return; }
+        const s = t / 0.7;
+        const alto = s < 0.35 ? -1.3 + s / 0.35 * 2.2 : 0.9 * (1 - (s - 0.35) / 0.65) * Math.cos((s - 0.35) / 0.65 * Math.PI / 2);
+        v.alto = Math.max(-1.3, alto); v.obj.position.y = v.alto;
+        const est = s < 0.4 ? 1.35 : 1 + 0.35 * Math.max(0, 1 - (s - 0.4) / 0.3);
+        c.scale.set(1 / Math.sqrt(est), est, 1 / Math.sqrt(est)); c.rotation.y = s < 0.5 ? s * 14 : 0;
+        if (s > 0.85) { const ap = (s - 0.85) / 0.15; c.scale.set(1 + 0.25 * Math.sin(ap * Math.PI), 1 - 0.3 * Math.sin(ap * Math.PI), 1 + 0.25 * Math.sin(ap * Math.PI)); }
+      }
+    },
     yoEnVent: () => miVent != null,
     oscuro: () => !!(sab && sab.tipo === 'luces'),
     salirVent: salir,

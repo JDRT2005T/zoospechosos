@@ -50,7 +50,7 @@
     // fundido a negro → mostrar rol → la mansión
     const f = $('#fundido'); f.classList.add('ver');
     setTimeout(() => {
-      Salon.grupo.visible = false; Mansion.grupo.visible = true; Mansion.reiniciarVista();
+      Salon.grupo.visible = false; Mansion.grupo.visible = true; Mansion.reiniciarVista(); window.sinBrillo = true;
       $('#p-sala').classList.add('en-juego');
       S().reiniciarCamara(); S().enviarPos(true);
       pintarHud();
@@ -118,6 +118,7 @@
 
   // ================= ANIMACIONES DE MUERTE =================
   const ACERCA = 0.8; // segundos que tarda el impostor en llegar hasta la víctima
+  const DIST = 1.25;  // distancia entre impostor y víctima durante la escena (para que se aprecie)
   const suaveM = x => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); };
   // un objeto sale de la mano y vuela hasta un punto de la víctima (en coordenadas de la víctima)
   function volar(pr, uv, t, t0, t1, punto) {
@@ -170,9 +171,9 @@
   // ---------- 🔨 MARTILLO ----------
   function hacerMartillo() {
     const g = new T.Group();
-    const palo = new T.Mesh(new T.CylinderGeometry(0.045, 0.05, 1.1, 10), toon('#8b5a3c')); palo.position.y = -0.55; g.add(palo);
-    const cabeza = new T.Mesh(new T.BoxGeometry(0.62, 0.36, 0.36), new T.MeshToonMaterial({ color: '#9aa5b1' })); cabeza.position.y = -1.12; g.add(cabeza);
-    [-0.32, 0.32].forEach(x => { const c = new T.Mesh(new T.BoxGeometry(0.04, 0.38, 0.38), toon('#e63946')); c.position.set(x, -1.12, 0); g.add(c); });
+    const palo = new T.Mesh(new T.CylinderGeometry(0.045, 0.05, 1.3, 10), toon('#8b5a3c')); palo.position.y = -0.65; g.add(palo);
+    const cabeza = new T.Mesh(new T.BoxGeometry(0.62, 0.36, 0.36), new T.MeshToonMaterial({ color: '#9aa5b1' })); cabeza.position.y = -1.32; g.add(cabeza);
+    [-0.32, 0.32].forEach(x => { const c = new T.Mesh(new T.BoxGeometry(0.04, 0.38, 0.38), toon('#e63946')); c.position.set(x, -1.32, 0); g.add(c); });
     g.position.y = -0.3; return g;
   }
   // ---------- 🎂 PASTEL EXPLOSIVO ----------
@@ -242,9 +243,9 @@
         if (ua) {
           const br = ua.brazos[1];
           if (t < 0.6) { const q = t / 0.6; br.rotation.x = -3.0 * q; br.rotation.z = 0.1; ua.cuerpo.rotation.x = -0.25 * q; }
-          else if (t < 0.72) { const q = (t - 0.6) / 0.12; br.rotation.x = -3.0 + 1.45 * q; ua.cuerpo.rotation.x = -0.25 + 0.6 * q; }
-          else if (t < 1.6) { br.rotation.x = -1.55; ua.cuerpo.rotation.x = 0.35; }
-          else { const q = Math.min(1, (t - 1.6) / 0.4); br.rotation.x = -1.55 * (1 - q); ua.cuerpo.rotation.x = 0.35 * (1 - q); }
+          else if (t < 0.72) { const q = (t - 0.6) / 0.12; br.rotation.x = -3.0 + 2.15 * q; ua.cuerpo.rotation.x = -0.25 + 0.6 * q; }
+          else if (t < 1.6) { br.rotation.x = -0.85; ua.cuerpo.rotation.x = 0.35; }
+          else { const q = Math.min(1, (t - 1.6) / 0.4); br.rotation.x = -0.85 * (1 - q); ua.cuerpo.rotation.x = 0.35 * (1 - q); }
         }
         if (uv && t >= 0.72) {
           const q = Math.min(1, (t - 0.72) / 0.08);
@@ -318,10 +319,10 @@
           else { br.rotation.x = -1.2; ua.cuerpo.rotation.x = 0.2; }
         }
         // a los 0.45 s la varilla pasa a la víctima: entra por atrás y sale por la boca
-        if (t >= 0.45 && uv && g.parent !== uv.cuerpo) { quitar(g); uv.cuerpo.add(g); g.rotation.set(0.3, 0, 0); }
+        if (t >= 0.45 && uv && g.parent !== uv.cuerpo) { quitar(g); uv.cuerpo.add(g); g.rotation.set(0.42, 0, 0); }
         if (uv && g.parent === uv.cuerpo) {
           const q = Math.min(1, Math.max(0, (t - 0.45) / 0.35));
-          g.position.set(0, -2.9 + 2.3 * q, -0.5 + 0.08 * q);
+          g.position.set(0, -2.9 + 2.3 * q, -0.95 + 0.15 * q);
           g.userData.roja.visible = q > 0.9 && sangre();
           if (t >= 0.8 && t < 1.8) {
             alto(0.35 + Math.sin(t * 30) * 0.03);
@@ -366,7 +367,7 @@
     const tipo = ANIMS[m.tipo] ? m.tipo : 'granada', D = ANIMS[tipo];
     // la víctima se congela; el impostor aparece detrás (o al frente, si le regala el pastel)
     const fx = Math.sin(m.r), fz = Math.cos(m.r);
-    const kx = D.frente ? m.x + fx * 1.3 : m.x - fx * 0.75, kz = D.frente ? m.z + fz * 1.3 : m.z - fz * 0.75, kr = D.frente ? m.r + Math.PI : m.r;
+    const kx = D.frente ? m.x + fx * 1.3 : m.x - fx * DIST, kz = D.frente ? m.z + fz * 1.3 : m.z - fz * DIST, kr = D.frente ? m.r + Math.PI : m.r;
     const yp = S().yoPos;
     if (m.v === miId()) { yp.x = m.x; yp.z = m.z; yp.r = m.r; S().enviarPos(true); }
     else { vv.cx = vv.tx = m.x; vv.cz = vv.tz = m.z; vv.cr = vv.tr = m.r; }
@@ -383,7 +384,7 @@
     if (m.a === miId() || m.v === miId()) {
       k.ca = Zoo.crear(ropaDe(m.a)); k.cv = Zoo.crear(ropaDe(m.v));
       k.cvx = SET.x + (D.frente ? 0.65 : -0.35);
-      k.caFin = k.cvx - SET.x + (D.frente ? -1.3 : 0.75); k.caIni = k.caFin + (D.frente ? -2.2 : 2.2);
+      k.caFin = k.cvx - SET.x + (D.frente ? -1.3 : DIST); k.caIni = k.caFin + (D.frente ? -2.2 : 2.2);
       k.cv.position.set(k.cvx - SET.x, 0, 0); k.ca.position.set(k.caIni, 0, 0);
       k.cv.rotation.y = -Math.PI / 2; k.ca.rotation.y = D.frente ? Math.PI / 2 : -Math.PI / 2;
       set.add(k.ca); set.add(k.cv); set.visible = true;
@@ -673,7 +674,7 @@
     $('#p-sala').classList.remove('en-juego');
     ['#revelar', '#aviso-muerte'].forEach(s => $(s).classList.remove('ver'));
     $('#final').className = '';
-    Mansion.grupo.visible = false; Salon.grupo.visible = true;
+    Mansion.grupo.visible = false; Salon.grupo.visible = true; window.sinBrillo = false;
     A.sol.position.set(3, 7, 5); A.sol.target.position.set(0, 0, 0); A.sol.target.updateMatrixWorld();
     const s = S();
     if (s.sala) {
@@ -736,6 +737,7 @@
       if (id !== miId() && !soyFantasma() && !muriendo.has(id) && !mismoCuarto(v)) { v.obj.visible = false; v.etiqueta.style.visibility = 'hidden'; }
       // con las luces apagadas, el tripulante solo ve muy cerquita
       if (id !== miId() && ZooSabotaje.oscuro() && !soyImpostor() && !soyFantasma() && Math.hypot(v.cx - S().yoPos.x, v.cz - S().yoPos.z) > 3.2) { v.obj.visible = false; v.etiqueta.style.visibility = 'hidden'; }
+      ZooSabotaje.posar(v, id, dt); // trampilla
       if (v.fantasma && v.obj) { v.obj.position.y = 0.35 + Math.sin(t * 2 + id.length) * 0.12; v.obj.userData.piernas.forEach(l => l.rotation.x = 0.4); }
       v.etiqueta.classList.toggle('imp', soyImpostor() && rol(id) === 'i');
       v.etiqueta.classList.toggle('fant', muertos.has(id));

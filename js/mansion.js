@@ -158,7 +158,7 @@
       const fondo = f === 0; // la pared del fondo del mapa nunca tapa a nadie
       const mat = fondo ? matPared : std('#5b2d99', { roughness: 0.85, transparent: true });
       const m = caja(ancho, ALTO, 0.3, mat, (x0 + x1) / 2, ALTO / 2, z, true);
-      caja(ancho, 0.05, 0.32, neon(fondo ? '#2ee6d6' : '#ff3d9a', 4), (x0 + x1) / 2, ALTO + 0.02, z, false);
+      caja(ancho, 0.05, 0.32, neon(fondo ? '#2ee6d6' : '#ff3d9a', 1.2), (x0 + x1) / 2, ALTO + 0.02, z, false);
       if (!fondo) frentes.push({ m, z, x0, x1, op: 1 });
       c = fin + 1;
     }
@@ -170,13 +170,13 @@
       let fin = f; while (fin + 1 < FIL && hayPared(letra(fin + 1, c - 1), letra(fin + 1, c))) fin++;
       const z0 = f * CS - MZ, z1 = (fin + 1) * CS - MZ, x = c * CS - MX;
       caja(0.3, ALTO, z1 - z0, matPared, x, ALTO / 2, (z0 + z1) / 2, true);
-      caja(0.32, 0.05, z1 - z0, neon('#2ee6d6', 4), x, ALTO + 0.02, (z0 + z1) / 2, false);
+      caja(0.32, 0.05, z1 - z0, neon('#2ee6d6', 1.2), x, ALTO + 0.02, (z0 + z1) / 2, false);
       f = fin + 1;
     }
   }
   // marcos de neón y tapetes en las puertas
   let texTapete = null;
-  const marcoMat = neon('#5effa0', 4);
+  const marcoMat = neon('#3ccf7f', 1.1);
   const hojas = []; // puertas que se cierran con el sabotaje
   const matHoja = new T.MeshBasicMaterial({ color: new T.Color('#ff2e4d').multiplyScalar(1.6), transparent: true, opacity: 0.6 });
   function marco(x, z, giro, k) {
@@ -200,7 +200,7 @@
       g.strokeStyle = '#5effa0'; g.lineWidth = 8; g.strokeRect(6, 6, 116, 116);
       g.fillStyle = '#5effa0'; g.font = '900 54px Nunito, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('🚪', 64, 68);
     });
-    const tap = new T.Mesh(new T.PlaneGeometry(CS - 0.3, CS - 0.3), new T.MeshBasicMaterial({ map: texTapete, transparent: true, color: new T.Color(1.4, 1.4, 1.4), depthWrite: false }));
+    const tap = new T.Mesh(new T.PlaneGeometry(CS - 0.3, CS - 0.3), new T.MeshBasicMaterial({ map: texTapete, transparent: true, color: new T.Color(1, 1, 1), depthWrite: false }));
     tap.rotation.x = -Math.PI / 2; tap.position.set(cx(c), 0.025, cz(f)); grupo.add(tap);
   }
 
