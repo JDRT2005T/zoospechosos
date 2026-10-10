@@ -227,10 +227,11 @@
     const cerca = Math.hypot(yp.x - k.x, yp.z - k.z) < 9;
     explosionSonido(cerca);
     if (cerca) { S().sacudir(0.9); document.body.classList.add('sacudir'); setTimeout(() => document.body.classList.remove('sacudir'), 500); }
-    // fogonazo + humo + chispas
-    Part.rafaga(p, { n: 4, colores: ['#fff3b0', '#ffb347'], vel: 0.5, vida: 0.22, tam: 1.6, crecer: 1.5, aditivo: true, brillo: 1.6 });
-    Part.impacto(p); Part.humo(p); Part.humo({ x: p.x, y: 1.3, z: p.z });
-    if (sangre()) {
+    const loVeo = soyFantasma() || Mansion.cuartoDe(k.x, k.z) === Mansion.cuartoDe(yp.x, yp.z) || Math.hypot(yp.x - k.x, yp.z - k.z) < 2.5;
+    // fogonazo + humo + chispas (si pasó en otro cuarto, solo se escucha)
+    if (loVeo) Part.rafaga(p, { n: 4, colores: ['#fff3b0', '#ffb347'], vel: 0.5, vida: 0.22, tam: 1.6, crecer: 1.5, aditivo: true, brillo: 1.6 });
+    if (loVeo) { Part.impacto(p); Part.humo(p); Part.humo({ x: p.x, y: 1.3, z: p.z }); }
+    if (!loVeo) { /* nada que mostrar */ } else if (sangre()) {
       Part.rafaga(p, { n: 45, colores: ['#b00000', '#e01e37', '#7a0010', '#ff2a3a'], vel: 6.5, arriba: 1.5, grav: 13, vida: 1.3, tam: 0.2, dispersion: 0.4 });
       Part.rafaga(p, { n: 14, colores: ['#8a0000', '#c1121f'], vel: 3, arriba: 1.2, grav: 9, vida: 1.0, tam: 0.45, crecer: 0.6 });
     } else {
@@ -370,7 +371,9 @@
     animarMuertes(dt);
     moverPedazos(dt);
     Mansion.actualizarVista(S().yoPos.x, S().yoPos.z, dt, soyFantasma());
+    const yp0 = S().yoPos, miCuarto = Mansion.cuartoDe(yp0.x, yp0.z), veTodo = soyFantasma();
     restos.forEach(r => {
+      if (!r.userData.libre) r.visible = veTodo || Mansion.cuartoDe(r.position.x, r.position.z) === miCuarto || Math.hypot(r.position.x - yp0.x, r.position.z - yp0.z) < 2.5;
       if (r.userData.crece && r.scale.x < 1) r.scale.setScalar(Math.min(1, r.scale.x + dt * 1.2));
       if (r.userData.aparece && r.scale.x < 1) r.scale.setScalar(Math.min(1, r.scale.x + dt * 8));
     });

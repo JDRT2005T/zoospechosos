@@ -60,6 +60,20 @@
   const matPared = std('#4a2380', { roughness: 0.85 });
   // pared a lo largo de x (z fijo). Todas son altas; las que quedan entre la cámara y tú se vuelven transparentes.
   const frentes = []; // paredes que pueden taparte
+  let texTapete = null;
+  function puerta(x, z, giro) { // giro 0: pared a lo largo de x; giro 1: pared a lo largo de z
+    const g = new T.Group(); g.position.set(x, 0, z); g.rotation.y = giro ? Math.PI / 2 : 0; grupo.add(g);
+    const marco = neon('#5effa0', 4);
+    [-PUERTA / 2, PUERTA / 2].forEach(dx => { const p = new T.Mesh(new T.BoxGeometry(0.14, ALTO, 0.36), marco); p.position.set(dx, ALTO / 2, 0); g.add(p); });
+    const arco = new T.Mesh(new T.BoxGeometry(PUERTA + 0.14, 0.14, 0.36), marco); arco.position.y = ALTO; g.add(arco);
+    if (!texTapete) texTapete = lienzo(256, 128, (c) => {
+      c.fillStyle = 'rgba(20,60,40,.85)'; c.fillRect(0, 0, 256, 128);
+      c.strokeStyle = '#5effa0'; c.lineWidth = 8; c.strokeRect(6, 6, 244, 116);
+      c.fillStyle = '#5effa0'; c.font = '900 60px Nunito, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('▲   ▼', 128, 66);
+    });
+    const tapete = new T.Mesh(new T.PlaneGeometry(PUERTA - 0.2, 1.3), new T.MeshBasicMaterial({ map: texTapete, transparent: true, color: new T.Color(1.6, 1.6, 1.6), depthWrite: false }));
+    tapete.rotation.x = -Math.PI / 2; tapete.position.y = 0.025; g.add(tapete);
+  }
   function paredX(z, x0, x1, huecos, alta) {
     const cortes = [x0];
     (huecos || []).forEach(c => cortes.push(c - PUERTA / 2, c + PUERTA / 2));
@@ -69,8 +83,9 @@
       const mat = alta ? matPared : std('#5b2d99', { roughness: 0.85, transparent: true });
       const m = caja(b - a, ALTO, 0.3, mat, (a + b) / 2, ALTO / 2, z, true);
       const tira = caja(b - a, 0.05, 0.32, neon(alta ? '#2ee6d6' : '#ff3d9a', 4), (a + b) / 2, ALTO + 0.02, z, false);
-      if (!alta) { tira.material.transparent = true; frentes.push({ m, tira, z, x0: a, x1: b, op: 1 }); }
+      if (!alta) frentes.push({ m, z, x0: a, x1: b, op: 1 });
     }
+    (huecos || []).forEach(c => puerta(c, z, 0));
   }
   function paredZ(x, z0, z1, huecos) {
     const cortes = [z0];
@@ -81,6 +96,7 @@
       caja(0.3, ALTO, b - a, matPared, x, ALTO / 2, (a + b) / 2, true);
       caja(0.32, 0.05, b - a, neon('#2ee6d6', 4), x, ALTO + 0.02, (a + b) / 2, false);
     }
+    (huecos || []).forEach(c => puerta(x, c, 1));
   }
   paredX(-MZ, -MX, MX, [], true);              // fondo
   paredX(MZ, -MX, MX, [0], false);             // frente (puerta principal del vestíbulo)
@@ -187,6 +203,11 @@
     t.position.set((q.x0 + q.x1) / 2, ALTO + 0.1, (q.z0 + q.z1) / 2);
     t.castShadow = false; t.receiveShadow = false; t.renderOrder = 3;
     grupo.add(t); q.techo = t; q.op = 1;
+    // el cuarto que queda entre la cámara y tú no lleva techo (taparía tu puerta): se oscurece el piso,
+    // menos una franja junto a la puerta para que se vea por dónde salir
+    const s = new T.Mesh(new T.PlaneGeometry(q.x1 - q.x0, q.z1 - q.z0 - 1.4), new T.MeshBasicMaterial({ color: '#05010d', transparent: true, opacity: 0, depthWrite: false }));
+    s.rotation.x = -Math.PI / 2; s.position.set((q.x0 + q.x1) / 2, 0.035, (q.z0 + q.z1) / 2 + 0.7); s.renderOrder = 2; s.visible = false;
+    grupo.add(s); q.sombra = s; q.opS = 0;
   });
   let cuartoActual = null;
   // verTodo = fantasma (los fantasmas ven toda la mansión)
@@ -195,19 +216,21 @@
     cuartoActual = aqui;
     const k = Math.min(1, dt * 6);
     CUARTOS.forEach(q => {
-      const meta = (verTodo || q === aqui) ? 0 : 1;
+      const delante = !verTodo && aqui && q !== aqui && q.z0 >= aqui.z1 - 0.01; // más cerca de la cámara que yo
+      const meta = (verTodo || q === aqui || delante) ? 0 : 1;
       q.op += (meta - q.op) * k;
       q.techo.material.opacity = q.op; q.techo.visible = q.op > 0.02;
+      q.opS += ((delante ? 0.82 : 0) - q.opS) * k;
+      q.sombra.material.opacity = q.opS; q.sombra.visible = q.opS > 0.02;
     });
     frentes.forEach(f => {
       const tapa = f.z > pz && f.z - pz < 6.5 && px > f.x0 - 3 && px < f.x1 + 3;
-      const meta = tapa ? 0.18 : 1;
+      const meta = tapa ? 0.32 : 1;
       f.op += (meta - f.op) * k;
       f.m.material.opacity = f.op; f.m.material.depthWrite = f.op > 0.95;
-      f.tira.material.opacity = f.op;
     });
   }
-  function reiniciarVista() { CUARTOS.forEach(q => { q.op = 1; q.techo.material.opacity = 1; q.techo.visible = true; }); cuartoActual = null; }
+  function reiniciarVista() { CUARTOS.forEach(q => { q.op = 1; q.techo.material.opacity = 1; q.techo.visible = true; q.opS = 0; q.sombra.visible = false; }); cuartoActual = null; }
 
   window.Mansion = {
     grupo, colisionar, limites, salida, cuartoDe, MX, MZ, actualizarVista, reiniciarVista,
