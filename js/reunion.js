@@ -44,7 +44,7 @@
   A.alCuadro.push(dt => {
     animarExpulsion(dt);
     const b = $('#b-reportar');
-    if (!partida || fase || !ZooJuego.activo) { accion = null; b.hidden = true; return; }
+    if (!partida || fase || !ZooJuego.activo || ZooCaceria.activa()) { accion = null; b.hidden = true; return; } // en la cacería no hay reuniones
     accion = null;
     if (!ZooJuego.soyFantasma() && !ZooJuego.bloqueado()) {
       const yp = S().yoPos, cuarto = Mansion.cuartoDe(yp.x, yp.z);
@@ -223,7 +223,9 @@
     let max = 0, quien = null, empate = false;
     Object.entries(cuenta).forEach(([a, n]) => { if (n > max) { max = n; quien = a; empate = false; } else if (n === max) empate = true; });
     const nadie = !quien || empate || quien === 'saltar';
-    return { id: nadie ? null : quien, empate: !!quien && empate, saltaron: quien === 'saltar' && !empate, votos: valen };
+    const r = { id: nadie ? null : quien, empate: !!quien && empate, saltaron: quien === 'saltar' && !empate, votos: valen };
+    if (r.id && G().roles[r.id] === 'i') r.caza = ZooCaceria.generar(); // ¡le atinaron! el anfitrión reparte las piezas
+    return r;
   }
 
   // ================= RESULTADO Y EXPULSIÓN =================
@@ -240,7 +242,8 @@
     pintar();
     if (m.id) { const c = $(`.rn-j[data-id="${m.id}"]`); if (c) c.classList.add('expulsado'); }
     A.bip(330, 0.3, 'triangle', 0.06);
-    luego(4000, () => fundido(() => { $('#reunion').classList.remove('ver'); expulsar(m); }));
+    const esImp = m.id && G().roles[m.id] === 'i';
+    luego(4000, () => fundido(() => { $('#reunion').classList.remove('ver'); if (esImp) cazar(m); else expulsar(m); }));
   }
   function fundido(f) {
     const d = $('#fundido'); d.classList.add('ver');
@@ -249,7 +252,7 @@
 
   // ---- escena: sale volando por la ventana hacia el cielo de noche ----
   const ESP = new T.Vector3(0, 0, -260);
-  let esc3d = null, volador = null, tExp = 0, expDatos = null;
+  let esc3d = null, volador = null, tExp = 0;
   function armarCielo() {
     const g = new T.Group(); g.position.copy(ESP); g.visible = false; A.escena.add(g);
     const c = document.createElement('canvas'); c.width = 16; c.height = 256;
@@ -280,18 +283,30 @@
     return g;
   }
 
-  function expulsar(m) {
-    fase = 'expulsion'; expDatos = m; tExp = 0;
+  // escena del cielo de noche: alguien sale volando (expulsado o cazado) y un texto se escribe solito
+  function cielo(o) {
+    fase = 'expulsion'; tExp = 0;
     esc3d = esc3d || armarCielo();
     esc3d.visible = true;
     document.body.classList.add('rn-exp');
-    if (m.id) {
-      volador = Zoo.crear(G().ropaDe(m.id));
+    if (o.id) {
+      volador = Zoo.crear(G().ropaDe(o.id));
       volador.position.set(-7, 1.2, -4.5); esc3d.add(volador);
     }
     S().reiniciarCamara();
     A.bip(180, 0.5, 'sawtooth', 0.05);
-    // el texto que se escribe solito
+    const t = $('#rn-texto'); t.innerHTML = '<b></b><small></small>'; t.classList.add('ver');
+    escribir(t.querySelector('b'), o.l1, 700, () => escribir(t.querySelector('small'), o.l2 || '', 300));
+    luego(o.ms || 7200, () => fundido(() => {
+      pararExpulsion();
+      t.classList.remove('ver');
+      document.body.classList.remove('rn-exp');
+      fase = null;
+      S().reiniciarCamara();
+      if (o.alFin) o.alFin();
+    }));
+  }
+  function expulsar(m) {
     const roles = G().roles, cfg = S().cfg();
     let linea1, linea2 = '';
     if (!m.id) linea1 = m.empate ? 'Nadie fue expulsado. (Empate) 🤝' : 'Nadie fue expulsado. (Saltaron el voto) ⏭';
@@ -301,9 +316,15 @@
       const quedan = Object.keys(roles).filter(id => roles[id] === 'i' && G().vivo(id) && id !== m.id).length;
       linea2 = quedan === 1 ? 'Queda 1 impostor 👀' : `Quedan ${quedan} impostores` + (quedan ? ' 👀' : ' 🎉');
     }
-    const t = $('#rn-texto'); t.innerHTML = '<b></b><small></small>'; t.classList.add('ver');
-    escribir(t.querySelector('b'), linea1, 700, () => escribir(t.querySelector('small'), linea2, 300));
-    luego(m.id ? 7200 : 5200, () => fundido(volver));
+    cielo({ id: m.id, l1: linea1, l2: linea2, ms: m.id ? 7200 : 5200, alFin: () => volver(m) });
+  }
+  // 🎯 ¡adivinaron al impostor! no se expulsa: empieza la cacería
+  function cazar(m) {
+    fase = null; datos = null; votos = {};
+    const g = G();
+    g.limpiarRestos(); g.reubicar(); g.reiniciarEspera();
+    botonDesde = Date.now() + ESPERA_BOTON;
+    ZooCaceria.empezar(m.id, m.caza || {});
   }
   function escribir(el, txt, espera, listo) {
     const letras = [...txt]; let i = 0;
@@ -333,12 +354,8 @@
   }
 
   // de vuelta a la mansión: todos a la mesa, sin cuerpos
-  function volver() {
-    const m = expDatos || {};
-    pararExpulsion();
-    $('#rn-texto').classList.remove('ver');
-    document.body.classList.remove('rn-exp');
-    fase = null; datos = null; votos = {}; expDatos = null;
+  function volver(m) {
+    datos = null; votos = {};
     const g = G();
     if (m.id) g.expulsar(m.id);
     g.limpiarRestos();
@@ -352,7 +369,7 @@
   const $$ = s => document.querySelectorAll(s);
 
   window.ZooReunion = {
-    iniciar, terminar, cine,
+    iniciar, terminar, cine, cielo,
     activa: () => !!fase,
     bloquea: () => !!fase,
     registrar(canal) {

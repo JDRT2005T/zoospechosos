@@ -23,14 +23,14 @@
     { k: 'medias', nombre: '🔶 Misiones medianas', min: 0, max: 5, paso: 1 },
     { k: 'largas', nombre: '🔷 Misiones largas', min: 0, max: 3, paso: 1 },
     { k: 'reunion', nombre: 'Tiempo de votación', min: 30, max: 120, paso: 15, fmt: v => v + ' s' },
-    { k: 'caza', nombre: 'Tiempo de cacería', min: 60, max: 240, paso: 30, fmt: v => v + ' s' },
+    { k: 'caza', nombre: 'Tiempo de cacería', min: 90, max: 300, paso: 30, fmt: v => v + ' s' },
     { k: 'enfriamiento', nombre: 'Espera entre ataques', min: 15, max: 60, paso: 5, fmt: v => v + ' s' },
   ];
   const SINO = [
     { k: 'votoAnonimo', nombre: 'Votos anónimos' },
     { k: 'mostrarRol', nombre: 'Revelar rol al expulsar' },
   ];
-  const DEF = { modo: 'caceria', mapa: 'mansion', max: 10, impostores: 1, velocidad: 1, cortas: 3, medias: 2, largas: 1, reunion: 60, caza: 120, enfriamiento: 30, votoAnonimo: false, mostrarRol: true };
+  const DEF = { modo: 'caceria', mapa: 'mansion', max: 10, impostores: 1, velocidad: 1, cortas: 3, medias: 2, largas: 1, reunion: 60, caza: 180, enfriamiento: 30, votoAnonimo: false, mostrarRol: true };
 
   // ---------- estado ----------
   let sala = null, canal = null;

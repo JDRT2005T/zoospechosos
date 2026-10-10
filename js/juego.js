@@ -41,6 +41,7 @@
     activo = true; terminando = false; roles = d.roles || {}; nInicial = Object.keys(roles).length;
     muertos.clear(); muriendo.clear(); limpiarRestos();
     ZooReunion.iniciar();
+    ZooCaceria.iniciar();
     ZooMisiones.iniciar(d.tareas, roles, miId());
     ZooSabotaje.iniciar(roles);
     enfriaHasta = Date.now() + 12000; // al principio el impostor espera un poco
@@ -642,6 +643,7 @@
     if (!activo || terminando) return;
     terminando = true;
     ZooReunion.terminar();
+    ZooCaceria.terminar();
     const f = $('#final');
     const gana = m.gana;
     f.className = 'ver ' + (gana === 'i' ? 'impostor' : gana === 't' ? 'tripulante' : '');
@@ -678,6 +680,7 @@
     ZooMisiones.terminar();
     ZooSabotaje.terminar();
     ZooReunion.terminar();
+    ZooCaceria.terminar();
     activo = false; terminando = false; mostrandoRol = false;
     muriendo.forEach(k => { k.pm.todo.forEach(quitar); if (k.ca) { k.pc.todo.forEach(quitar); set.remove(k.ca); set.remove(k.cv); } });
     set.visible = false;
@@ -730,6 +733,7 @@
   function bloqueado() {
     if (mostrandoRol || terminando) return true;
     if (ZooReunion.bloquea()) return true;
+    if (ZooCaceria.bloquea()) return true;
     if (muriendo.has(miId())) return true;
     if (ZooMisiones.abierta()) return true;
     if (ZooSabotaje.yoEnVent()) return true;
@@ -759,7 +763,7 @@
       },
       reiniciarEspera() { enfriaHasta = Date.now() + S().cfg().enfriamiento * 1000; },
     },
-    velocidad: () => soyFantasma() ? 1.25 : 1,
+    velocidad: () => soyFantasma() ? 1.25 : ZooCaceria.velocidad(),
     // los vivos no ven a los fantasmas
     visible: id => (!muertos.has(id) || soyFantasma()) && !ZooSabotaje.enVent(id),
     efecto(v, id, dt, t) {
@@ -768,6 +772,7 @@
       // con las luces apagadas, el tripulante solo ve muy cerquita
       if (id !== miId() && ZooSabotaje.oscuro() && !soyImpostor() && !soyFantasma() && Math.hypot(v.cx - S().yoPos.x, v.cz - S().yoPos.z) > 3.2) { v.obj.visible = false; v.etiqueta.style.visibility = 'hidden'; }
       ZooSabotaje.posar(v, id, dt); // trampilla
+      ZooCaceria.posar(v, id, dt, t); // armas y golpes de la cacería
       if (v.fantasma && v.obj) { v.obj.position.y = 0.35 + Math.sin(t * 2 + id.length) * 0.12; v.obj.userData.piernas.forEach(l => l.rotation.x = 0.4); }
       v.etiqueta.classList.toggle('imp', soyImpostor() && rol(id) === 'i');
       v.etiqueta.classList.toggle('fant', muertos.has(id));
@@ -775,6 +780,7 @@
     registrar(canal) {
       ZooSabotaje.registrar(canal);
       ZooReunion.registrar(canal);
+      ZooCaceria.registrar(canal);
       canal.on('broadcast', { event: 'mision' }, ({ payload }) => { if (!activo) return; ZooMisiones.alHecho(payload); if (S().soyHost()) setTimeout(revisarFin, 300); })
         .on('broadcast', { event: 'muerte' }, ({ payload }) => alMuerte(payload))
         .on('broadcast', { event: 'fin' }, ({ payload }) => alFin(payload));

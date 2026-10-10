@@ -116,6 +116,8 @@
     <button id="b-sabotaje" class="b-chico" hidden><span>⚠️</span><b></b><small>SABOTEAR</small></button>
     <button id="b-vent" class="b-chico" hidden><span>🕳️</span><small>ENTRAR</small></button>
     <button id="b-reportar" class="b-chico" hidden><span>📢</span><b></b><small>REPORTAR</small></button>
+    <button id="b-disparar" hidden><span>🍌</span><small>DISPARAR</small><em></em></button>
+    <div id="caza-hud"><div class="ch-fila"><span id="ch-imp"></span><div class="ch-barra"><i></i><b id="ch-vida"></b></div><span id="ch-reloj"></span></div><small id="ch-info"></small></div>
     <button id="b-usar" hidden><span>✋</span><small>USAR</small></button>
     <button id="b-matar" hidden><span>💣</span><b></b><small>MATAR</small></button>
   </div>
@@ -261,6 +263,8 @@
 <div id="cine"><i></i><i></i><div id="frase"></div></div>
 <div id="revelar"><div id="r-ico"></div><div id="r-tit"></div><div id="r-sub"></div><div id="r-equipo"></div></div>
 <div id="aviso-muerte"><b>💥 ¡TE EXPLOTARON!</b><span>Ahora eres un fantasma 👻<br><small>Puedes atravesar paredes y solo te ven otros fantasmas</small></span></div>
+<div id="caza-alarma"></div>
+<div id="caza-anuncio"><b></b><span></span><i></i></div>
 <div id="rn-intro"><div class="rn-i-ico">🚨</div><b>¡REUNIÓN DE EMERGENCIA!</b><small></small></div>
 <div id="reunion">
   <div class="rn-caja">
@@ -280,7 +284,7 @@
 <div id="final"><div class="f-caja"><h2 id="f-tit"></h2><div id="f-lista"></div><p id="f-premio"></p><small>Volviendo al lobby…</small></div></div>
 
 <script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
-<script>window.ZOO_VERSION = '3C.1'; // cambiar en cada actualización: obliga al celular a bajar los archivos nuevos</script>
+<script>window.ZOO_VERSION = '3D.0'; // cambiar en cada actualización: obliga al celular a bajar los archivos nuevos</script>
 <script type="module" src="js/arranque.js?v=3B.5"></script>
 <script>
   // Plan B: navegadores viejos sin "importmap" cargan la versión simple (sin efectos)
@@ -291,7 +295,7 @@
       s.onload = function () { cargar(lista.slice(1)); };
       document.body.appendChild(s);
     };
-    var planB = function () { if (!window.__zooModulo && !window.THREE) cargar(['vendor/three.min.js', 'vendor/supabase.js', 'js/personaje.js', 'js/particulas.js', 'js/app.js', 'js/salon.js', 'js/mansion.js', 'js/sala.js', 'js/misiones.js', 'js/sabotaje.js', 'js/juego.js', 'js/reunion.js', 'js/pwa.js']); };
+    var planB = function () { if (!window.__zooModulo && !window.THREE) cargar(['vendor/three.min.js', 'vendor/supabase.js', 'js/personaje.js', 'js/particulas.js', 'js/app.js', 'js/salon.js', 'js/mansion.js', 'js/sala.js', 'js/misiones.js', 'js/sabotaje.js', 'js/juego.js', 'js/reunion.js', 'js/caceria.js', 'js/pwa.js']); };
     var sabe = window.HTMLScriptElement && HTMLScriptElement.supports;
     if (sabe && !HTMLScriptElement.supports('importmap')) planB();
     else if (!sabe) setTimeout(planB, 4000); // navegador que no sabe decir: esperamos al moderno

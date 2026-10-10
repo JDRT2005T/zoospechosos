@@ -61,7 +61,9 @@
     Object.entries(INFO).forEach(([tipo, i]) => {
       const b = document.createElement('button'); b.className = 'tj';
       b.innerHTML = `<span>${i.e}</span><b>${i.n}</b><small>${i.d}</small>`;
-      b.disabled = falta > 0 || (tipo !== 'puertas' && !!sab);
+      const enCaza = window.ZooCaceria && ZooCaceria.activa() && (tipo === 'alarma' || tipo === 'oxigeno');
+      b.disabled = falta > 0 || (tipo !== 'puertas' && !!sab) || enCaza;
+      if (enCaza) b.querySelector('small').textContent = 'No se puede durante la cacería';
       b.onclick = () => {
         if (tipo === 'puertas') return pintarCuartos();
         $('#m-sabotaje').classList.remove('activa');
