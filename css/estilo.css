@@ -91,9 +91,9 @@ input::placeholder { color: rgba(255, 255, 255, .35); }
 .btn.jugar:active { box-shadow: 0 1px 0 #0b8a44; }
 @keyframes latido { 50% { transform: scale(1.03); } }
 .fila { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.menu-abajo .fila { grid-template-columns: 1fr; }
 
 /* vestuario */
-.pista { text-align: center; color: var(--suave); font-weight: 800; font-size: 13px; margin: auto 0 8px; opacity: .8; pointer-events: none !important; }
 .hoja { background: var(--vidrio); border: 1px solid var(--borde); border-radius: 22px; padding: 12px; backdrop-filter: blur(14px); width: 100%; max-width: 560px; align-self: center; }
 .cats { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; scrollbar-width: none; }
 .cats::-webkit-scrollbar { display: none; }
@@ -279,13 +279,6 @@ input::placeholder { color: rgba(255, 255, 255, .35); }
   .menu-abajo .fila { order: -1; display: flex; flex-direction: column; gap: 10px; width: 170px; }
   .btn.jugar { width: 230px; font-size: 26px; padding: 14px; }
 
-  /* vestuario: muñeco a la izquierda, opciones a la derecha */
-  #p-vestuario .barra h2 { text-align: left; padding-left: 4px; }
-  #p-vestuario .pista { position: fixed; left: 16px; bottom: 12px; width: 46%; margin: 0; }
-  #p-vestuario .hoja { position: fixed; right: max(16px, env(safe-area-inset-right)); top: 66px; height: calc(100% - 76px); margin: 0; width: min(50vw, 470px);
-    display: flex; flex-direction: column; padding: 10px; }
-  #p-vestuario .opciones { max-height: none; flex: 1; align-content: start; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); }
-  #p-vestuario .op { font-size: 24px; }
 
   /* sala */
   .codigo-sala { flex: 0 1 auto; flex-direction: row; gap: 10px; padding: 4px 14px; margin: 0 auto; }

@@ -1,4 +1,4 @@
-// ZOOspechosos — Parte 1: cuentas, menú y vestuario 3D
+// ZOOspechosos — cuentas, menú y escena 3D (la ropa se cambia en el lobby: sala.js)
 (function () {
   const SUPA_URL = 'https://kuyeziqwschacefbgjhs.supabase.co';
   const SUPA_KEY = 'sb_publishable_DAyCnLHJVHprc-QO7QOp4g_15UV8NEA';
@@ -152,7 +152,6 @@
   const VISTAS = {
     auth: { pos: [0, 2.6, 8.6], mira: [0, -0.3, -0.8], h: { pos: [2.7, 2.3, 7.4], mira: [2.7, 0.55, -0.8] } },
     menu: { pos: [0, 1.7, 5.4], mira: [0, 0.75, 0], h: { pos: [0, 1.45, 5.2], mira: [0, 1.08, 0] } },
-    vestuario: { pos: [0, 1.6, 5.6], mira: [0, 0.15, 0], h: { pos: [1.35, 1.3, 4.6], mira: [1.35, 0.85, 0] } },
     sala: { pos: [0, 5.4, 10.8], mira: [0, 0.5, -0.9] },
   };
   let vista = VISTAS.auth;
@@ -166,7 +165,7 @@
 
   // arrastrar para girar
   let arrastrando = false, ultimoX = 0;
-  canvas.addEventListener('pointerdown', e => { if (pantalla !== 'vestuario' && pantalla !== 'menu') return; arrastrando = true; ultimoX = e.clientX; giroVel = 0; });
+  canvas.addEventListener('pointerdown', e => { if (pantalla !== 'menu') return; arrastrando = true; ultimoX = e.clientX; giroVel = 0; });
   addEventListener('pointermove', e => { if (!arrastrando) return; const dx = e.clientX - ultimoX; ultimoX = e.clientX; giroVel = dx * 0.012; giroUsuario += giroVel; });
   addEventListener('pointerup', () => arrastrando = false);
 
@@ -240,11 +239,11 @@
     pantalla = nombre;
     $$('.pantalla').forEach(p => p.classList.toggle('activa', p.id === 'p-' + nombre));
     vista = VISTAS[nombre] || vista;
-    modoPj = nombre === 'vestuario' ? 'quieto' : 'baile';
+    modoPj = 'baile';
     if (nombre === 'auth') { if (!invitados.length) crearInvitados(); if (miPj) { escena.remove(miPj); miPj = null; } }
     else quitarInvitados();
     if (nombre === 'sala' && miPj) { escena.remove(miPj); Zoo.liberar(miPj); miPj = null; }
-    if (nombre === 'menu' && !miPj && perfil) ponerMiPj(perfil);
+    if (nombre === 'menu' && perfil) { if (!miPj) ponerMiPj(perfil); pintarPerfil(); } // la ropa pudo cambiar en el lobby
     [piso, pista, escenario, aro, disco, cable, confeti].forEach(o => o.visible = nombre !== 'sala');
     haces.forEach(h => h.visible = calidad === 'alta' && nombre !== 'sala');
     camLibre.on = nombre === 'sala';
@@ -359,59 +358,6 @@
   pintarSeg('#seg-calidad', calidad); pintarSeg('#seg-sonido', sonido);
   $$('#seg-calidad button').forEach(b => b.onclick = () => { calidad = b.dataset.v; guardar('zoo-calidad', calidad); pintarSeg('#seg-calidad', calidad); aplicarCalidad(); });
   $$('#seg-sonido button').forEach(b => b.onclick = () => { sonido = b.dataset.v; guardar('zoo-sonido', sonido); pintarSeg('#seg-sonido', sonido); });
-
-  // ================= VESTUARIO =================
-  let borrador = null, catActual = 'animal';
-  const CAMPOS = ['animal', 'color', 'sombrero', 'gafas', 'accesorio'];
-  $('#b-vestuario').onclick = () => {
-    borrador = {}; CAMPOS.forEach(c => borrador[c] = perfil[c]);
-    giroUsuario = 0; pintarOpciones(); ir('vestuario');
-  };
-  $('#b-volver').onclick = () => {
-    const cambio = CAMPOS.some(c => borrador[c] !== perfil[c]);
-    if (cambio && !confirm('¿Salir sin guardar los cambios?')) return;
-    ponerMiPj(perfil); ir('menu');
-  };
-  $('#b-guardar').onclick = async () => {
-    const btn = $('#b-guardar'); btn.disabled = true;
-    const { error } = await sb.from('zoo_perfiles').update(Object.assign({ actualizado: new Date().toISOString() }, borrador)).eq('id', perfil.id);
-    btn.disabled = false;
-    if (error) return toast(errorBonito(error));
-    Object.assign(perfil, borrador); pintarPerfil();
-    bip(880, 0.15); setTimeout(() => bip(1320, 0.18), 120);
-    toast('¡Guardado! Te ves increíble 😎');
-    ir('menu');
-  };
-  $$('.cat').forEach(b => b.onclick = () => { catActual = b.dataset.cat; $$('.cat').forEach(x => x.classList.toggle('activa', x === b)); pintarOpciones(); });
-
-  function pintarOpciones() {
-    const cont = $('#opciones'); cont.innerHTML = '';
-    let lista;
-    if (catActual === 'color') {
-      Zoo.COLORES.forEach(c => {
-        const b = document.createElement('button'); b.className = 'op color' + (borrador.color === c ? ' sel' : '');
-        b.innerHTML = `<i style="background:${c}"></i>`; b.onclick = () => elegir('color', c); cont.appendChild(b);
-      });
-      return;
-    }
-    lista = { animal: Zoo.ANIMALES, sombrero: Zoo.SOMBREROS, gafas: Zoo.GAFAS, accesorio: Zoo.ACCESORIOS }[catActual];
-    lista.forEach(o => {
-      const b = document.createElement('button'); b.className = 'op' + (borrador[catActual] === o.id ? ' sel' : '');
-      b.innerHTML = `${o.emoji}<small>${o.nombre}</small>`;
-      b.onclick = () => {
-        if (catActual === 'animal' && borrador.animal !== o.id) borrador.color = o.color; // color típico del animal
-        elegir(catActual, o.id);
-      };
-      cont.appendChild(b);
-    });
-  }
-  function elegir(campo, valor) {
-    borrador[campo] = valor;
-    ponerMiPj(borrador);
-    // saltito al cambiar
-    miPj.userData.cuerpo.position.y = 0.25;
-    pintarOpciones();
-  }
 
   // lo que necesitan los otros módulos (sala.js, juego…)
   const alCuadro = [];
