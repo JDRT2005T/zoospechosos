@@ -95,26 +95,37 @@
     tareas = t || {}; roles = r || {}; hechos = {}; miId = id; activo = true;
     rehacerMarcas();
   }
-  function terminar() { activo = false; cerrar(); marcas.clear(); pendientes = []; flechaG.visible = false; $('#b-usar').hidden = true; }
+  function terminar() { activo = false; extras = []; cerrar(); marcas.clear(); pendientes = []; flechaG.visible = false; $('#b-usar').hidden = true; }
+
+  // ---------- estaciones extra (arreglar sabotajes) ----------
+  let extras = []; // [{ x, z, e, tit, j, o, alListo }]
+  function setExtras(lista) { extras = lista || []; }
 
   // ---------- cada cuadro: flecha, botón USAR ----------
   let cerca = null;
+  const cerca2 = (lista, yp) => { let m = null, d = 1e9; lista.forEach(p => { const k = Math.hypot(p.x - yp.x, p.z - yp.z); if (k < d) { d = k; m = p; } }); return [m, d]; };
   function cuadro(dt, t, yp, puedeUsar, verMarcas) {
     if (!activo) return;
     marcas.visible = verMarcas;
     marcas.children.forEach((g, i) => { g.userData.s.position.y = 1.7 + Math.sin(t * 3 + i) * 0.12; });
-    // misión más cercana
-    let mejor = null, dMejor = 1e9;
-    pendientes.forEach(p => { const d = Math.hypot(p.x - yp.x, p.z - yp.z); if (d < dMejor) { dMejor = d; mejor = p; } });
-    flechaG.visible = verMarcas && !!mejor && dMejor > 2.5;
-    if (mejor) { flechaG.position.set(yp.x, 0.12, yp.z); flechaG.rotation.y = Math.atan2(mejor.x - yp.x, mejor.z - yp.z); }
-    cerca = puedeUsar && mejor && dMejor < 1.5 ? mejor : null;
+    const [mejor, dMejor] = cerca2(pendientes, yp);
+    const [ext, dExt] = cerca2(puedeUsar ? extras : [], yp);
+    // la flecha: primero los sabotajes (rojo), si no la misión más cercana (amarillo)
+    const meta = ext || mejor, dMeta = ext ? dExt : dMejor;
+    flechaG.visible = verMarcas && !!meta && dMeta > 2.5;
+    flecha.material.color.copy(ext ? new T.Color('#ff2e2e').multiplyScalar(3) : new T.Color('#ffd93d').multiplyScalar(3));
+    if (meta) { flechaG.position.set(yp.x, 0.12, yp.z); flechaG.rotation.y = Math.atan2(meta.x - yp.x, meta.z - yp.z); }
+    cerca = !puedeUsar ? null : (ext && dExt < 1.6) ? ext : (mejor && dMejor < 1.5 ? mejor : null);
     const b = $('#b-usar');
     b.hidden = !puedeUsar;
     b.classList.toggle('listo', !!cerca);
-    b.querySelector('span').textContent = cerca ? CAT[cerca.mid].e : '✋';
+    b.querySelector('span').textContent = cerca ? (cerca.mid ? CAT[cerca.mid].e : cerca.e) : '✋';
   }
-  $('#b-usar').addEventListener('click', () => { if (cerca && !abierta()) abrir(cerca); });
+  $('#b-usar').addEventListener('click', () => {
+    if (!cerca || abierta()) return;
+    if (cerca.mid) abrir(cerca);
+    else abrirJuego(cerca.tit, cerca.j, cerca.o, cerca.alListo);
+  });
 
   // ---------- panel del minijuego ----------
   let actual = null, alTerminar = null;
@@ -129,6 +140,17 @@
       caja.insertAdjacentHTML('beforeend', '<div class="mj-listo">✔ ¡LISTO!</div>');
       A.bip(880, 0.12); setTimeout(() => A.bip(1320, 0.15), 110);
       const hecho = actual; setTimeout(() => { cerrar(); if (alTerminar) alTerminar(hecho.mid, hecho.paso + 1); }, 650);
+    });
+  }
+  function abrirJuego(tit, j, o, alListo) {
+    actual = { extra: true };
+    $('#mj-tit').textContent = tit;
+    const caja = $('#mj-caja'); caja.innerHTML = '';
+    $('#mision').classList.add('ver');
+    JUEGOS[j](caja, o, () => {
+      caja.insertAdjacentHTML('beforeend', '<div class="mj-listo">✔ ¡ARREGLADO!</div>');
+      A.bip(880, 0.12); setTimeout(() => A.bip(1320, 0.15), 110);
+      setTimeout(() => { cerrar(); alListo(); }, 650);
     });
   }
   function cerrar() { actual = null; $('#mision').classList.remove('ver'); $('#mj-caja').innerHTML = ''; limpiarTimers(); }
@@ -225,8 +247,8 @@
     },
     // escribir el código
     codigo(c, o, fin) {
-      const cod = Array.from({ length: o.largo }, () => Math.floor(Math.random() * 10)).join('');
-      c.append(h(`<p class="mj-txt">Escribe el código: <b class="mj-cod">${cod}</b></p>`));
+      const cod = o.cod || Array.from({ length: o.largo }, () => Math.floor(Math.random() * 10)).join('');
+      c.append(h(o.oculto ? '<p class="mj-txt">Escribe el código que viste en la pantalla del Invernadero 🧪</p>' : `<p class="mj-txt">Escribe el código: <b class="mj-cod">${cod}</b></p>`));
       const pantalla = h('<div class="mj-pantalla">_</div>'), tec = h('<div class="mj-teclado"></div>'); c.append(pantalla, tec);
       let txt = '';
       [1, 2, 3, 4, 5, 6, 7, 8, 9, '⌫', 0, '✔'].forEach(k => {
@@ -311,7 +333,7 @@
   $('#b-mapa').addEventListener('click', () => { dibujarMapa(ZooSala.interno.yoPos); A.abrir('#m-mapa'); });
 
   window.ZooMisiones = {
-    CAT, asignar, iniciar, terminar, cuadro, progreso, alHecho, abierta, cerrar,
+    CAT, asignar, iniciar, terminar, cuadro, progreso, alHecho, abierta, cerrar, setExtras,
     set alTerminar(f) { alTerminar = f; },
     pendientesMias: () => pendientes.length,
     _dbg: { abrir: (mid, paso) => abrir({ mid, paso: paso || 0 }), completarTodo: () => { (tareas[miId] || []).forEach(mid => { for (let p = pasosHechos(miId, mid); p < CAT[mid].pasos.length; p++) alTerminar(mid, p + 1); }); }, get pendientes() { return pendientes; } }, // para pruebas

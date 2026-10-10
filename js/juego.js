@@ -40,6 +40,7 @@
     activo = true; terminando = false; roles = d.roles || {}; nInicial = Object.keys(roles).length;
     muertos.clear(); muriendo.clear(); limpiarRestos();
     ZooMisiones.iniciar(d.tareas, roles, miId());
+    ZooSabotaje.iniciar(roles);
     enfriaHasta = Date.now() + 12000; // al principio el impostor espera un poco
     const s = d.salidas && d.salidas[miId()];
     const yp = S().yoPos;
@@ -383,7 +384,7 @@
     });
     // botón matar: ¿hay alguien cerca?
     objetivo = null;
-    if (soyImpostor() && !soyFantasma()) {
+    if (soyImpostor() && !soyFantasma() && !ZooSabotaje.yoEnVent()) {
       const yp = S().yoPos; let mejor = 1.8;
       S().pjs.forEach((v, id) => {
         if (id === miId() || !vivo(id) || rol(id) === 'i' || !mismoCuarto(v)) return; // no se mata a través de paredes
@@ -455,6 +456,7 @@
   function terminar() {
     if (!activo) return;
     ZooMisiones.terminar();
+    ZooSabotaje.terminar();
     activo = false; terminando = false; mostrandoRol = false;
     muriendo.forEach(k => { if (k.granada.parent) k.granada.parent.remove(k.granada); });
     muriendo.clear(); muertos.clear(); limpiarRestos(); anillo.visible = false;
@@ -505,6 +507,7 @@
     if (mostrandoRol || terminando) return true;
     if (muriendo.has(miId())) return true;
     if (ZooMisiones.abierta()) return true;
+    if (ZooSabotaje.yoEnVent()) return true;
     for (const k of muriendo.values()) if (k.a === miId() && k.t < 2.4) return true;
     return false;
   }
@@ -515,15 +518,18 @@
     comenzar, terminar, bloqueado, soyFantasma, cine,
     velocidad: () => soyFantasma() ? 1.25 : 1,
     // los vivos no ven a los fantasmas
-    visible: id => !muertos.has(id) || soyFantasma(),
+    visible: id => (!muertos.has(id) || soyFantasma()) && !ZooSabotaje.enVent(id),
     efecto(v, id, dt, t) {
       // ¿está en mi mismo cuarto? (los fantasmas ven a todos)
       if (id !== miId() && !soyFantasma() && !muriendo.has(id) && !mismoCuarto(v)) { v.obj.visible = false; v.etiqueta.style.visibility = 'hidden'; }
+      // con las luces apagadas, el tripulante solo ve muy cerquita
+      if (id !== miId() && ZooSabotaje.oscuro() && !soyImpostor() && !soyFantasma() && Math.hypot(v.cx - S().yoPos.x, v.cz - S().yoPos.z) > 3.2) { v.obj.visible = false; v.etiqueta.style.visibility = 'hidden'; }
       if (v.fantasma && v.obj) { v.obj.position.y = 0.35 + Math.sin(t * 2 + id.length) * 0.12; v.obj.userData.piernas.forEach(l => l.rotation.x = 0.4); }
       v.etiqueta.classList.toggle('imp', soyImpostor() && rol(id) === 'i');
       v.etiqueta.classList.toggle('fant', muertos.has(id));
     },
     registrar(canal) {
+      ZooSabotaje.registrar(canal);
       canal.on('broadcast', { event: 'mision' }, ({ payload }) => { if (!activo) return; ZooMisiones.alHecho(payload); if (S().soyHost()) setTimeout(revisarFin, 300); })
         .on('broadcast', { event: 'muerte' }, ({ payload }) => alMuerte(payload))
         .on('broadcast', { event: 'fin' }, ({ payload }) => alFin(payload));

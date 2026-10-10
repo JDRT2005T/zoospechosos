@@ -457,3 +457,31 @@ input::placeholder { color: rgba(255, 255, 255, .35); }
 .mapa-ley { margin: 0; font-size: 12px; font-weight: 800; color: var(--suave); }
 .mapa-ley span { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle; }
 .mapa-ley .yo { background: #2ee6d6; } .mapa-ley .ms { background: #ffd93d; } .mapa-ley .pu { background: #5effa0; border-radius: 2px; }
+
+/* ===== sabotajes y alcantarillas ===== */
+.b-chico { position: fixed; width: 74px; height: 74px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 40% 35%, #5a5a6a, #2a2a36); border: 3px solid #555; transition: .15s; }
+.b-chico span { font-size: 28px; line-height: 1; }
+.b-chico small { font-family: 'Lilita One'; font-size: 10px; letter-spacing: .5px; }
+.b-chico b { position: absolute; inset: 0; display: grid; place-items: center; font-family: 'Lilita One'; font-size: 30px; text-shadow: 0 2px 6px #000; }
+.b-chico b:empty { display: none; }
+.b-chico[hidden] { display: none !important; }
+#b-sabotaje { right: max(28px, env(safe-area-inset-right)); bottom: calc(max(20px, env(safe-area-inset-bottom)) + 116px); opacity: .6; filter: grayscale(1); }
+#b-sabotaje.listo { opacity: 1; filter: none; background: radial-gradient(circle at 40% 35%, #ff9a3c, #c2410c); border-color: #ffd0a0; }
+#b-vent { right: calc(max(20px, env(safe-area-inset-right)) + 118px); bottom: max(34px, env(safe-area-inset-bottom)); background: radial-gradient(circle at 40% 35%, #4a4a5a, #15151d); border-color: #8b5cff; box-shadow: 0 0 18px rgba(139, 92, 255, .6); animation: latido 1s infinite; }
+#oscuro { position: fixed; inset: 0; pointer-events: none; z-index: 4; opacity: 0; transition: opacity .6s;
+  background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), rgba(0, 0, 0, 0) 70px, rgba(0, 0, 0, .55) 120px, rgba(2, 0, 8, .97) 190px); }
+#oscuro.ver { opacity: 1; }
+#sab-banner { position: fixed; left: 50%; top: calc(max(12px, env(safe-area-inset-top)) + 58px); transform: translateX(-50%); z-index: 6; display: none; max-width: min(560px, 70vw); text-align: center;
+  padding: 6px 14px; border-radius: 12px; font-weight: 900; font-size: 13px; background: rgba(60, 50, 0, .85); border: 2px solid var(--amarillo); color: #fff3b0; }
+#sab-banner.ver { display: block; }
+#sab-banner.crisis { background: rgba(90, 0, 10, .88); border-color: #ff2e2e; color: #ffd6dc; animation: parpadeo 1s infinite; }
+@keyframes parpadeo { 50% { box-shadow: 0 0 26px rgba(255, 0, 0, .8); } }
+#vent-ui { position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 12; display: none; flex-direction: column; align-items: center; gap: 8px;
+  background: rgba(20, 8, 40, .92); border: 2px solid #8b5cff; border-radius: 18px; padding: 10px 14px; }
+#vent-ui.ver { display: flex; }
+#vent-ui b { font-family: 'Lilita One'; font-weight: 400; font-size: 18px; }
+#vent-destinos { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+#vent-destinos .btn { padding: 8px 12px; font-size: 14px; }
+.tj.chico { padding: 10px 4px; }
+.tj:disabled { opacity: .45; }

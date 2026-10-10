@@ -10,21 +10,24 @@
     'OOOOOOO+nn+BBBBBBBBBBBBBBB...nn+LLLLLLLL',
     'OOOOOOO.nn.BBBBBBBBBBBBBBB...nn.LLLLLLLL',
     'OOOOOOO.nn.BBBBBBBBBBBBBBB...nn.LLLLLLLL',
-    'nn+nn+nnnnnnnnn+n++nn+nnnnnnnnnnnnn+nnnn',
+    'nnnnn+nnnnnnnnnnn++nnnnnnnnnnnnnnnn+nnnn',
+    'nn+nnnnnnnnnnnn+nnnnn+nnnnnnnnnnnnn+nnnn',
     'CCCCCCC.DDDDDD.cc.AAAAAAA.GGGG.HHHHHHHHH',
     'CCCCCCC.DDDDDD.cc.AAAAAAA.GGGG.HHHHHHHHH',
     'CCCCCCC.DDDDDD+cc.AAAAAAA+GGGG.HHHHHHHHH',
     'CCCCCCC+DDDDDD.cc.AAAAAAA.GGGG.HHHHHHHHH',
     'CCCCCCC.DDDDDD.cc+AAAAAAA.GGGG+HHHHHHHHH',
     'CCCCCCC.DDDDDD.cc.AAAAAAA.GGGG.HHHHHHHHH',
-    'mmm+mmmmmm+mmmm+mm++mmmmmm++mmmmm++mmmmm',
+    'mmmmmmmmmm+mmmm+mmmmmmmmmmm+mmmmm+mmmmmm',
+    'mmm+mmmmmmmmmmmmmm++mmmmmm+mmmmmmm+mmmmm',
     'PPPPPPPP.EEEE.VVVVVVVVVV.WWW.TTTTTTTTTTT',
     'PPPPPPPP.EEEE.VVVVVVVVVV.WWW.TTTTTTTTTTT',
     'PPPPPPPP.EEEE+VVVVVVVVVV.WWW.TTTTTTTTTTT',
     'PPPPPPPP.EEEE.VVVVVVVVVV.WWW+TTTTTTTTTTT',
     'PPPPPPPP.EEEE.VVVVVVVVVV.WWW.TTTTTTTTTTT',
     'PPPPPPPP.EEEE.VVVVVVVVVV.WWW.TTTTTTTTTTT',
-    'sssss+ss+sssssss+ssss+s+ssssssssss+s+sss',
+    'sssss+ssssssssss+ssss+ssssssssssssss+sss',
+    'ssssssss+ssssssssssssss+ssssssssss+sssss',
     'JJJJJJJJJJJJJJJJJ.SSSSSSSSSSS.IIIIIIIIII',
     'JJJJJJJJJJJJJJJJJ.SSSSSSSSSSS.IIIIIIIIII',
     'JJJJJJJJJJJJJJJJJ.SSSSSSSSSSS+IIIIIIIIII',
@@ -174,8 +177,12 @@
   // marcos de neón y tapetes en las puertas
   let texTapete = null;
   const marcoMat = neon('#5effa0', 4);
-  function marco(x, z, giro) {
+  const hojas = []; // puertas que se cierran con el sabotaje
+  const matHoja = new T.MeshBasicMaterial({ color: new T.Color('#ff2e4d').multiplyScalar(1.6), transparent: true, opacity: 0.6 });
+  function marco(x, z, giro, k) {
     const g = new T.Group(); g.position.set(x, 0, z); g.rotation.y = giro ? Math.PI / 2 : 0; grupo.add(g);
+    const hoja = new T.Mesh(new T.BoxGeometry(PUERTA, ALTO - 0.1, 0.16), matHoja); hoja.position.y = (ALTO - 0.1) / 2; hoja.visible = false; g.add(hoja);
+    hojas.push({ k, m: hoja, cerrada: false, caja: giro ? [x - 0.15, z - PUERTA / 2, x + 0.15, z + PUERTA / 2] : [x - PUERTA / 2, z - 0.15, x + PUERTA / 2, z + 0.15] });
     [-PUERTA / 2, PUERTA / 2].forEach(dx => { const p = new T.Mesh(new T.BoxGeometry(0.14, ALTO, 0.36), marcoMat); p.position.set(dx, ALTO / 2, 0); g.add(p); });
     const arco = new T.Mesh(new T.BoxGeometry(PUERTA + 0.14, 0.14, 0.36), marcoMat); arco.position.y = ALTO; g.add(arco);
   }
@@ -184,8 +191,9 @@
     [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(([df, dc]) => { // marco en cada lado donde la puerta da a otra zona
       const v = letra(f + df, c + dc);
       if (!esPiso(v) || v === '+' || v === zona[f][c]) return;
-      if (df) marco(cx(c), (f + (df > 0 ? 1 : 0)) * CS - MZ, 0);
-      else marco((c + (dc > 0 ? 1 : 0)) * CS - MX, cz(f), 1);
+      const k = esPasillo(v) ? zona[f][c] : v; // el cuarto al que da esta puerta
+      if (df) marco(cx(c), (f + (df > 0 ? 1 : 0)) * CS - MZ, 0, k);
+      else marco((c + (dc > 0 ? 1 : 0)) * CS - MX, cz(f), 1, k);
     });
     if (!texTapete) texTapete = lienzo(128, 128, (g) => {
       g.fillStyle = 'rgba(20,60,40,.85)'; g.fillRect(0, 0, 128, 128);
@@ -331,6 +339,39 @@
     caja(3, 0.05, 1.6, std('#2ed3c6'), r.cx + 2.5, 0.03, r.z1 - 1.5, false);
   })(R.I);
 
+  // ---------- alcantarillas (3 redes: solo conectan con las de su mismo color) ----------
+  const REDES = { 1: '#2ee6d6', 2: '#ff3d9a', 3: '#5effa0' };
+  const VENTS = [
+    ['C', 1, r => [r.x0 + 2.6, r.z1 - 1.4]], ['O', 1, r => [r.x1 - 1.5, r.z1 - 1.2]], ['P', 1, r => [r.x1 - 1.4, r.z0 + 1.3]],
+    ['B', 2, r => [r.x0 + 1.5, r.z1 - 1.2]], ['G', 2, r => [r.cx - 1.0, r.z1 - 1.2]], ['L', 2, r => [r.x0 + 1.3, r.z1 - 1.2]], ['H', 2, r => [r.x1 - 1.4, r.z1 - 1.2]],
+    ['E', 3, r => [r.cx + 1.2, r.z1 - 1.3]], ['S', 3, r => [r.x0 + 1.3, r.z0 + 1.3]], ['J', 3, r => [r.x1 - 1.5, r.z0 + 1.3]], ['T', 3, r => [r.x0 + 1.5, r.z1 - 1.3]],
+  ].map(([k, red, f], i) => {
+    const [x, z] = f(RECT[k]);
+    const g = new T.Group(); g.position.set(x, 0, z); grupo.add(g);
+    const base = new T.Mesh(new T.CylinderGeometry(0.55, 0.55, 0.05, 20), std('#2a2a33', { metalness: 0.6, roughness: 0.4 })); base.position.y = 0.025; g.add(base);
+    const tapa = new T.Group(); tapa.position.set(0, 0.06, 0); g.add(tapa);
+    for (let j = -2; j <= 2; j++) { const b = new T.Mesh(new T.BoxGeometry(0.9 - Math.abs(j) * 0.12, 0.03, 0.08), std('#111')); b.position.z = j * 0.16; tapa.add(b); }
+    const aro = new T.Mesh(new T.RingGeometry(0.55, 0.62, 24), neon(REDES[red], 2)); aro.rotation.x = -Math.PI / 2; aro.position.y = 0.04; g.add(aro);
+    return { id: i, k, red, x, z, tapa, abre: 0 };
+  });
+  animados.push((t, dt) => VENTS.forEach(v => { if (v.abre > 0) { v.abre = Math.max(0, v.abre - dt); v.tapa.rotation.x = -Math.sin(Math.min(1, v.abre / 0.5) * Math.PI) * 1.4; v.tapa.position.y = 0.06 + Math.sin(Math.min(1, v.abre / 0.5) * Math.PI) * 0.25; } }));
+
+  // ---------- paneles de sabotaje ----------
+  function panel(k, f, color, txt) {
+    const [x, z] = f(RECT[k]);
+    const g = new T.Group(); g.position.set(x, 0, z); grupo.add(g);
+    const caj = new T.Mesh(new T.BoxGeometry(0.8, 1.3, 0.3), std('#3a3f4b', { metalness: 0.5 })); caj.position.y = 0.65; caj.castShadow = true; g.add(caj);
+    const pant = new T.Mesh(new T.PlaneGeometry(0.6, 0.45), new T.MeshBasicMaterial({ color: new T.Color(color).multiplyScalar(1.5) })); pant.position.set(0, 0.95, 0.16); g.add(pant);
+    cajas.push([x - 0.4, z - 0.15, x + 0.4, z + 0.15]);
+    return { k, x, z: z + 0.7, pant, nombre: txt };
+  }
+  const PANELES = {
+    luces: panel('E', r => [r.cx + 1.4, r.z0 + 0.5], '#ffd93d', 'Tablero de luces'),
+    alarma: panel('G', r => [r.x1 - 1.0, r.z0 + 0.5], '#ff2e2e', 'Panel de alarma'),
+    codigo: panel('O', r => [r.x0 + 2.8, r.z0 + 0.5], '#2ee6d6', 'Pantalla del código'),
+    teclado: panel('C', r => [r.cx - 1.5, r.z0 + 0.5], '#5effa0', 'Teclado de oxígeno'),
+  };
+
   // luces (pocas, para que vaya bien en celular)
   [['#ff3d9a', R.B], ['#2ee6d6', R.P], ['#ffd93d', R.V], ['#5effa0', R.J]].forEach(([c, r]) => { const l = new T.PointLight(c, 8, 14); l.position.set(r.cx, 2.6, r.cz); grupo.add(l); });
 
@@ -379,7 +420,8 @@
   }
   function colisionar(p) {
     limites(p);
-    for (let n = 0; n < 2; n++) for (const c of cajas) {
+    const todas = hojas.some(h => h.cerrada) ? cajas.concat(hojas.filter(h => h.cerrada).map(h => h.caja)) : cajas;
+    for (let n = 0; n < 2; n++) for (const c of todas) {
       if (p.x < c[0] - RAD || p.x > c[2] + RAD || p.z < c[1] - RAD || p.z > c[3] + RAD) continue;
       const qx = Math.max(c[0], Math.min(c[2], p.x)), qz = Math.max(c[1], Math.min(c[3], p.z));
       const dx = p.x - qx, dz = p.z - qz, d2 = dx * dx + dz * dz;
@@ -399,7 +441,10 @@
   }
 
   window.Mansion = {
-    grupo, colisionar, limites, salida, cuartoDe, zonaDe, MX, MZ, RECT, AREAS, PLANO,
+    grupo, colisionar, limites, salida, cuartoDe, zonaDe, MX, MZ, RECT, AREAS, PLANO, VENTS, REDES, PANELES,
+    puertas(k, cerrar) { hojas.forEach(h => { if (h.k === k) { h.cerrada = cerrar; h.m.visible = cerrar; } }); },
+    abrirTodas() { hojas.forEach(h => { h.cerrada = false; h.m.visible = false; }); },
+    animarVent(id) { const v = VENTS[id]; if (v) v.abre = 1; },
     actualizarVista(px, pz, dt, verTodo) { actualizarVista(px, pz, verTodo); animarFrentes(px, pz, dt); },
     reiniciarVista() { ultimaClave = ''; },
     animar(dt, t) { animados.forEach(f => f(t, dt)); },

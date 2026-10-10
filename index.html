@@ -112,6 +112,8 @@
     <div id="h-barra" title="Progreso de la tripulación"><span>📋 Misiones del equipo</span><i></i></div>
     <div id="h-cuarto"></div>
     <div class="h-der"><span id="h-vivos"></span><button class="icono" id="b-mapa" title="Mapa">🗺️</button><button class="icono" id="b-terminar" title="Terminar partida" hidden>⏹</button></div>
+    <button id="b-sabotaje" class="b-chico" hidden><span>⚠️</span><b></b><small>SABOTEAR</small></button>
+    <button id="b-vent" class="b-chico" hidden><span>🕳️</span><small>ENTRAR</small></button>
     <button id="b-usar" hidden><span>✋</span><small>USAR</small></button>
     <button id="b-matar" hidden><span>💣</span><b></b><small>MATAR</small></button>
   </div>
@@ -232,6 +234,14 @@
 
 <div id="mision"><div class="mj-panel"><div class="mj-cab"><b id="mj-tit"></b><button class="icono" id="mj-cerrar">✕</button></div><div id="mj-caja"></div></div></div>
 
+<div class="modal" id="m-sabotaje">
+  <div class="tarjeta ancha">
+    <h3>⚠️ Sabotear</h3>
+    <div class="tarjetas" id="sab-opciones"></div>
+    <button class="btn sec cerrar">Cerrar</button>
+  </div>
+</div>
+
 <div class="modal" id="m-mapa">
   <div class="tarjeta ancha mapa-tarjeta">
     <h3>🗺️ Mansión Fiesta</h3>
@@ -244,14 +254,17 @@
 <div id="toast"></div>
 <div id="cuenta"></div>
 <div id="fundido"></div>
+<div id="oscuro"></div>
+<div id="sab-banner"></div>
+<div id="vent-ui"><b id="vent-aqui"></b><div id="vent-destinos"></div><button class="btn peligro" id="vent-salir">⬆ Salir</button></div>
 <div id="cine"><i></i><i></i><div id="frase"></div></div>
 <div id="revelar"><div id="r-ico"></div><div id="r-tit"></div><div id="r-sub"></div><div id="r-equipo"></div></div>
 <div id="aviso-muerte"><b>💥 ¡TE EXPLOTARON!</b><span>Ahora eres un fantasma 👻<br><small>Puedes atravesar paredes y solo te ven otros fantasmas</small></span></div>
 <div id="final"><div class="f-caja"><h2 id="f-tit"></h2><div id="f-lista"></div><p id="f-premio"></p><small>Volviendo al lobby…</small></div></div>
 
 <script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
-<script>window.ZOO_VERSION = '3B.0'; // cambiar en cada actualización: obliga al celular a bajar los archivos nuevos</script>
-<script type="module" src="js/arranque.js?v=3B.0"></script>
+<script>window.ZOO_VERSION = '3B.1'; // cambiar en cada actualización: obliga al celular a bajar los archivos nuevos</script>
+<script type="module" src="js/arranque.js?v=3B.1"></script>
 <script>
   // Plan B: navegadores viejos sin "importmap" cargan la versión simple (sin efectos)
   (function () {
@@ -261,7 +274,7 @@
       s.onload = function () { cargar(lista.slice(1)); };
       document.body.appendChild(s);
     };
-    var planB = function () { if (!window.__zooModulo && !window.THREE) cargar(['vendor/three.min.js', 'vendor/supabase.js', 'js/personaje.js', 'js/particulas.js', 'js/app.js', 'js/salon.js', 'js/mansion.js', 'js/sala.js', 'js/misiones.js', 'js/juego.js', 'js/pwa.js']); };
+    var planB = function () { if (!window.__zooModulo && !window.THREE) cargar(['vendor/three.min.js', 'vendor/supabase.js', 'js/personaje.js', 'js/particulas.js', 'js/app.js', 'js/salon.js', 'js/mansion.js', 'js/sala.js', 'js/misiones.js', 'js/sabotaje.js', 'js/juego.js', 'js/pwa.js']); };
     var sabe = window.HTMLScriptElement && HTMLScriptElement.supports;
     if (sabe && !HTMLScriptElement.supports('importmap')) planB();
     else if (!sabe) setTimeout(planB, 4000); // navegador que no sabe decir: esperamos al moderno
