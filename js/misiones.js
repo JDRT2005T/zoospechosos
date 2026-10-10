@@ -12,10 +12,18 @@
     regar: { n: 'Regar las plantas', e: '🌱', t: 'c', pasos: [{ k: 'O', p: r => [r.cx - 1.75, r.cz + 2.4], j: 'mantener', o: { seg: 3, emoji: '🚿', txt: 'Mantén presionado para regar' } }] },
     bola: { n: 'Meter la bola', e: '🎱', t: 'c', pasos: [{ k: 'A', p: r => [r.cx + 0.5, r.cz - 0.2], j: 'punteria', o: { aciertos: 3 } }] },
     inodoro: { n: 'Bajar el agua', e: '🚽', t: 'c', pasos: [{ k: 'W', p: r => [r.cx - 1.6, r.cz + 0.1], j: 'mantener', o: { seg: 2, emoji: '🚽', txt: 'Mantén presionada la palanca' } }] },
+    espejo: { n: 'Limpiar el espejo', e: '🪞', t: 'c', pasos: [{ k: 'W', p: r => [r.cx + 0.8, r.z0 + 1.0], j: 'frotar', o: { n: 6, emoji: '🪞', mugre: '💩', txt: '¡Frota con el dedo para limpiar el espejo!' } }] },
+    pez: { n: 'Alimentar al pez', e: '🐠', t: 'c', pasos: [{ k: 'L', p: r => [r.x0 + 2.2, r.cz - 1.2], j: 'tocar', o: { n: 5, emoji: '🐠', txt: 'Toca la pecera para echarle comida' } }] },
+    calcetines: { n: 'Juntar los calcetines', e: '🧦', t: 'c', pasos: [{ k: 'H', p: r => [r.cx + 4.5, r.z1 - 1.5], j: 'emparejar', o: { n: 3, items: ['🧦', '🧤', '👟', '🩴'], txt: 'Encuentra las parejas' } }] },
+    radio: { n: 'Sintonizar la radio', e: '📻', t: 'c', pasos: [{ k: 'T', p: r => [r.cx - 4, r.z0 + 1.4], j: 'girar', o: { n: 2, txt: 'Gira la perilla hasta la estrella ⭐' } }] },
     cables: { n: 'Conectar los cables', e: '🔌', t: 'm', pasos: [{ k: 'E', p: r => [r.x0 + 1.5, r.cz], j: 'cables', o: { n: 4 } }] },
     codigo: { n: 'Código de seguridad', e: '🔢', t: 'm', pasos: [{ k: 'G', p: r => [r.cx + 1.0, r.z0 + 2.3], j: 'codigo', o: { largo: 5 } }] },
     coctel: { n: 'Preparar el cóctel', e: '🍹', t: 'm', pasos: [{ k: 'B', p: r => [r.cx - 6, r.z0 + 1.4], j: 'memoria', o: { n: 4, items: ['🍋', '🍓', '🧊', '🍍', '🥥', '🌿'] } }] },
     pesas: { n: 'Levantar pesas', e: '🏋️', t: 'm', pasos: [{ k: 'I', p: r => [r.cx + 3, r.cz + 2.1], j: 'tocar', o: { n: 15, tiempo: 6, emoji: '🏋️', txt: '¡15 toques en 6 segundos!' } }] },
+    musica: { n: 'Ecualizar la música', e: '🎚️', t: 'm', pasos: [{ k: 'B', p: r => [r.cx + 1.5, r.z0 + 2.4], j: 'deslizar', o: { n: 4, txt: 'Pon cada barra en su marca 🎵' } }] },
+    cajafuerte: { n: 'Abrir la caja fuerte', e: '🔐', t: 'm', pasos: [{ k: 'G', p: r => [r.x0 + 1.2, r.cz + 1.5], j: 'girar', o: { n: 3, txt: 'Gira la rueda hasta cada estrella ⭐' } }] },
+    platos: { n: 'Lavar los platos', e: '🍽️', t: 'm', pasos: [{ k: 'C', p: r => [r.x1 - 1.4, r.cz + 2.5], j: 'frotar', o: { n: 9, emoji: '🍽️', mugre: '🍝', txt: '¡Frota para quitar la comida pegada!' } }] },
+    fichas: { n: 'Ordenar las fichas', e: '🃏', t: 'm', pasos: [{ k: 'A', p: r => [r.cx - 4, r.cz - 1], j: 'emparejar', o: { n: 5, items: ['🃏', '🎲', '♟️', '🎯', '🧩', '🎮'], txt: 'Encuentra todas las parejas' } }] },
     hojas: { n: 'Limpiar la piscina', e: '🍃', t: 'm', pasos: [{ k: 'P', p: r => [r.cx, r.cz + 3.7], j: 'atrapar', o: { n: 8, emoji: '🍃' } }] },
     carro: { n: 'Arreglar el carro', e: '🚗', t: 'l', pasos: [
       { k: 'S', p: r => [r.cx + 2.2, r.cz], j: 'mantener', o: { seg: 2.5, emoji: '🧰', txt: 'Saca la caja de herramientas' } },
@@ -26,6 +34,15 @@
     pastel: { n: 'El pastel de la fiesta', e: '🎂', t: 'l', pasos: [
       { k: 'C', p: r => [r.cx + 0.8, r.cz + 1.5], j: 'punteria', o: { aciertos: 2, txt: '¡Saca el pastel del horno a tiempo!' } },
       { k: 'V', p: r => [r.cx, r.cz + 1.8], j: 'memoria', o: { n: 4, items: ['🍓', '🍒', '🍫', '🕯️', '🍬'] } }] },
+    ropa: { n: 'Lavar la ropa', e: '🧺', t: 'l', pasos: [
+      { k: 'H', p: r => [r.cx - 1.5, r.z1 - 1.2], j: 'mantener', o: { seg: 2, emoji: '🧺', txt: 'Junta la ropa sucia' } },
+      { k: 'W', p: r => [r.cx + 1.3, r.cz - 1.5], j: 'girar', o: { n: 2, txt: 'Gira la lavadora hasta la estrella ⭐' } }] },
+    cena: { n: 'Servir la cena', e: '🍗', t: 'l', pasos: [
+      { k: 'C', p: r => [r.cx - 1.5, r.z1 - 1.5], j: 'punteria', o: { aciertos: 2, txt: '¡Saca el pollo del horno a tiempo!' } },
+      { k: 'D', p: r => [r.cx - 2.6, r.cz - 1], j: 'ordenar', o: { n: 5, txt: 'Pon los platos del 1 al 5 🍽️' } }] },
+    globos: { n: 'Fiesta en el jardín', e: '🎈', t: 'l', pasos: [
+      { k: 'E', p: r => [r.cx + 1.6, r.cz + 1.5], j: 'interruptores', o: { n: 6, txt: 'Prende el generador ⚡' } },
+      { k: 'J', p: r => [r.cx + 5, r.cz + 2.6], j: 'tocar', o: { n: 12, emoji: '🎈', txt: '¡Infla los globos!' } }] },
   };
   const POR_TIPO = { c: [], m: [], l: [] };
   Object.entries(CAT).forEach(([id, m]) => POR_TIPO[m.t].push(id));
@@ -201,7 +218,7 @@
     },
     // prender todos los interruptores
     interruptores(c, o, fin) {
-      c.append(h('<p class="mj-txt">Prende todos los interruptores 💡</p>'));
+      c.append(h(`<p class="mj-txt">${o.txt || 'Prende todos los interruptores 💡'}</p>`));
       const g = h('<div class="mj-fila"></div>'); c.append(g);
       const est = Array.from({ length: o.n }, () => Math.random() < 0.5); if (est.every(x => x)) est[0] = false;
       est.forEach((on, i) => {
@@ -282,12 +299,94 @@
     },
     // tocar los números en orden
     ordenar(c, o, fin) {
-      c.append(h('<p class="mj-txt">Toca los libros del 1 al ' + o.n + ' 📚</p>'));
+      c.append(h(`<p class="mj-txt">${o.txt || 'Toca los libros del 1 al ' + o.n + ' 📚'}</p>`));
       const g = h('<div class="mj-fila libros"></div>'); c.append(g);
       let sig = 1;
       mezclar(Array.from({ length: o.n }, (_, i) => i + 1)).forEach(k => {
         const b = h(`<button class="mj-libro" style="--c:hsl(${k * 55},70%,55%)">${k}</button>`); g.append(b);
         b.onclick = () => { if (k === sig) { sig++; b.classList.add('ok'); b.disabled = true; A.bip(500 + k * 80, 0.06); if (sig > o.n) fin(); } else { A.bip(180, 0.15, 'sawtooth', 0.04); } };
+      });
+    },
+    // frotar con el dedo para limpiar manchas
+    frotar(c, o, fin) {
+      c.append(h(`<p class="mj-txt">${o.txt}</p>`));
+      const zona = h(`<div class="mj-frotar"><span>${o.emoji}</span></div>`), n = h(`<div class="mj-num">0 / ${o.n}</div>`); c.append(zona, n);
+      let limpias = 0, abajo = false, ultimo = 0;
+      for (let i = 0; i < o.n; i++) {
+        const m = h(`<i class="mj-mancha">${o.mugre}</i>`);
+        m.style.left = 6 + Math.random() * 76 + '%'; m.style.top = 6 + Math.random() * 68 + '%'; m.dataset.v = 1;
+        zona.append(m);
+      }
+      const frota = e => {
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        if (!el || !el.classList.contains('mj-mancha') || el.dataset.v <= 0) return;
+        el.dataset.v = Math.max(0, el.dataset.v - 0.12); el.style.opacity = el.dataset.v; el.style.transform = `scale(${0.6 + el.dataset.v * 0.4})`;
+        if (performance.now() - ultimo > 70) { ultimo = performance.now(); A.bip(1400 + Math.random() * 600, 0.02, 'sine', 0.02); }
+        if (el.dataset.v <= 0) { limpias++; n.textContent = `${limpias} / ${o.n}`; A.bip(1000, 0.06); if (limpias >= o.n) fin(); }
+      };
+      zona.addEventListener('pointerdown', e => { abajo = true; if (zona.setPointerCapture) zona.setPointerCapture(e.pointerId); frota(e); });
+      zona.addEventListener('pointermove', e => { if (abajo) frota(e); });
+      ['pointerup', 'pointercancel'].forEach(ev => zona.addEventListener(ev, () => abajo = false));
+    },
+    // girar una perilla hasta la estrella y quedarse ahí un ratito
+    girar(c, o, fin) {
+      c.append(h(`<p class="mj-txt">${o.txt}</p>`));
+      const d = h('<div class="mj-perilla"><b>⭐</b><div class="mj-aguja"><i></i></div></div>'), n = h(`<div class="mj-num">0 / ${o.n}</div>`); c.append(d, n);
+      const est = d.querySelector('b'), aguja = d.querySelector('.mj-aguja');
+      let ang = 0, meta = 0, ronda = 0, dentro = 0, agarrado = false, listo = false;
+      const dif = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
+      const nueva = () => { do { meta = Math.random() * 360; } while (dif(meta, ang) < 70); est.style.transform = `rotate(${meta}deg) translateY(${-((d.offsetWidth || 190) / 2 - 16)}px) rotate(${-meta}deg)`; dentro = 0; };
+      const angulo = e => { const r = d.getBoundingClientRect(); return (Math.atan2(e.clientX - (r.left + r.width / 2), -(e.clientY - (r.top + r.height / 2))) * 180 / Math.PI + 360) % 360; };
+      d.addEventListener('pointerdown', e => { agarrado = true; if (d.setPointerCapture) d.setPointerCapture(e.pointerId); ang = angulo(e); });
+      d.addEventListener('pointermove', e => { if (!agarrado) return; const a = angulo(e); if (dif(a, ang) > 4) A.bip(300 + a, 0.015, 'square', 0.015); ang = a; });
+      ['pointerup', 'pointercancel'].forEach(ev => d.addEventListener(ev, () => agarrado = false));
+      nueva();
+      timers.push(setInterval(() => {
+        if (listo) return;
+        aguja.style.transform = `rotate(${ang}deg)`;
+        const cerca = dif(meta, ang) < 14;
+        d.classList.toggle('cerca', cerca);
+        dentro = cerca ? dentro + 50 : 0;
+        if (dentro >= 500) {
+          ronda++; n.textContent = `${ronda} / ${o.n}`; A.bip(1100, 0.1);
+          if (ronda >= o.n) { listo = true; fin(); } else nueva();
+        }
+      }, 50));
+    },
+    // poner cada barra en su marca
+    deslizar(c, o, fin) {
+      c.append(h(`<p class="mj-txt">${o.txt}</p>`));
+      const g = h('<div class="mj-barras"></div>'); c.append(g);
+      let listo = false;
+      const metas = Array.from({ length: o.n }, () => 10 + Math.round(Math.random() * 80));
+      const ins = metas.map(m => {
+        const fila = h(`<label class="mj-desliza"><span class="mj-marca" style="left:${m}%"></span><input type="range" min="0" max="100" value="${m > 50 ? 5 : 95}"></label>`);
+        g.append(fila); return fila.querySelector('input');
+      });
+      const revisa = () => {
+        if (listo) return;
+        let todas = true;
+        ins.forEach((inp, i) => { const ok = Math.abs(inp.value - metas[i]) <= 5; inp.parentNode.classList.toggle('ok', ok); if (!ok) todas = false; });
+        if (todas) { listo = true; ins.forEach(x => x.disabled = true); fin(); }
+      };
+      ins.forEach(inp => inp.addEventListener('input', () => { A.bip(300 + inp.value * 8, 0.02, 'sine', 0.02); revisa(); }));
+    },
+    // encontrar las parejas (cartas boca abajo)
+    emparejar(c, o, fin) {
+      c.append(h(`<p class="mj-txt">${o.txt || 'Encuentra las parejas'}</p>`));
+      const g = h('<div class="mj-fila mj-cartas"></div>'); c.append(g);
+      const cartas = mezclar(o.items.slice(0, o.n).flatMap(x => [x, x]));
+      let abiertas = [], hechas = 0, espera = false;
+      cartas.forEach(it => {
+        const b = h(`<button class="mj-carta"><span>${it}</span></button>`); g.append(b);
+        b.onclick = () => {
+          if (espera || b.classList.contains('abierta')) return;
+          b.classList.add('abierta'); abiertas.push(b); A.bip(700, 0.04);
+          if (abiertas.length < 2) return;
+          const [x, y] = abiertas; abiertas = [];
+          if (x.textContent === y.textContent) { x.classList.add('ok'); y.classList.add('ok'); hechas++; A.bip(1100, 0.08); if (hechas >= o.n) fin(); }
+          else { espera = true; A.bip(220, 0.12, 'sawtooth', 0.03); timers.push(setTimeout(() => { x.classList.remove('abierta'); y.classList.remove('abierta'); espera = false; }, 650)); }
+        };
       });
     },
     // atrapar cosas que se mueven

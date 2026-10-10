@@ -451,6 +451,34 @@ input::placeholder { color: rgba(255, 255, 255, .35); }
 .mj-libro.ok { opacity: .3; }
 .mj-agua { position: relative; width: 90%; height: 170px; border-radius: 16px; background: linear-gradient(180deg, #2ec4f0, #0a6f9e); overflow: hidden; }
 .mj-hoja { position: absolute; font-size: 34px; }
+/* minijuegos nuevos: frotar, perilla, barras y parejas */
+.mj-frotar { position: relative; width: 90%; height: 170px; border-radius: 16px; background: radial-gradient(circle, #d8f3ff, #7fb8d6); overflow: hidden; touch-action: none; user-select: none; display: grid; place-items: center; }
+.mj-frotar > span { font-size: 110px; opacity: .85; pointer-events: none; }
+.mj-mancha { position: absolute; font-size: 38px; font-style: normal; transition: opacity .1s, transform .1s; }
+.mj-perilla { position: relative; width: 190px; height: 190px; border-radius: 50%; touch-action: none; user-select: none;
+  background: radial-gradient(circle at 40% 35%, #4a3a7a, #1a0b2e); border: 4px solid rgba(255, 255, 255, .25); box-shadow: inset 0 0 24px #0008; }
+.mj-perilla.cerca { border-color: #5effa0; box-shadow: 0 0 22px rgba(94, 255, 160, .6), inset 0 0 24px #0008; }
+.mj-perilla > b { position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; font-size: 26px; line-height: 30px; text-align: center; pointer-events: none; }
+.mj-aguja { position: absolute; inset: 0; pointer-events: none; }
+.mj-aguja i { position: absolute; left: 50%; top: 22px; width: 10px; height: 74px; margin-left: -5px; border-radius: 6px; background: linear-gradient(#ffd93d, #ff7b00); box-shadow: 0 0 10px #ffd93d; }
+.mj-aguja::after { content: ''; position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; margin: -17px; border-radius: 50%; background: #ffd93d; }
+.mj-barras { display: flex; flex-direction: column; gap: 12px; width: 88%; }
+.mj-desliza { position: relative; display: block; padding: 6px 0; }
+.mj-desliza input { width: 100%; accent-color: #ff3d9a; height: 26px; }
+.mj-marca { position: absolute; top: 0; bottom: 0; width: 6px; margin-left: -3px; border-radius: 3px; background: #ffd93d; box-shadow: 0 0 8px #ffd93d; pointer-events: none; }
+.mj-desliza.ok input { accent-color: #5effa0; }
+.mj-desliza.ok .mj-marca { background: #5effa0; box-shadow: 0 0 10px #5effa0; }
+.mj-cartas { max-width: 380px; }
+.mj-carta { width: 58px; height: 72px; border-radius: 12px; background: linear-gradient(135deg, #8b5cff, #ff3d9a); border: 3px solid rgba(255, 255, 255, .3); font-size: 32px; }
+.mj-carta span { visibility: hidden; }
+.mj-carta.abierta { background: rgba(255, 255, 255, .12); }
+.mj-carta.abierta span { visibility: visible; }
+.mj-carta.ok { border-color: #5effa0; box-shadow: 0 0 10px rgba(94, 255, 160, .5); }
+@media (orientation: landscape) and (max-height: 560px) {
+  .mj-frotar { height: 130px; } .mj-frotar > span { font-size: 80px; }
+  .mj-perilla { width: 150px; height: 150px; } .mj-aguja i { top: 16px; height: 58px; }
+  .mj-carta { width: 48px; height: 58px; font-size: 26px; }
+}
 .mj-listo { position: absolute; inset: 0; display: grid; place-items: center; font-family: 'Lilita One'; font-size: 44px; color: #5effa0; text-shadow: 0 0 20px #5effa0; background: rgba(10, 30, 20, .85); border-radius: 16px; animation: aparecer .2s; }
 .mapa-tarjeta { max-width: 96vw !important; align-items: center; }
 #mapa-lienzo { max-width: 100%; border-radius: 10px; image-rendering: pixelated; }

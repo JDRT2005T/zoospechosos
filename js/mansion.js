@@ -5,35 +5,39 @@
 (function () {
   const T = THREE;
   const PLANO = [
-    'OOOOOOO.nn.BBBBBBBBBBBBBBB...nn.LLLLLLLL',
-    'OOOOOOO.nn.BBBBBBBBBBBBBBB...nn.LLLLLLLL',
-    'OOOOOOO+nn+BBBBBBBBBBBBBBB...nn+LLLLLLLL',
-    'OOOOOOO.nn.BBBBBBBBBBBBBBB...nn.LLLLLLLL',
-    'OOOOOOO.nn.BBBBBBBBBBBBBBB...nn.LLLLLLLL',
-    'nnnnn+nnnnnnnnnnn++nnnnnnnnnnnnnnnn+nnnn',
-    'nn+nnnnnnnnnnnn+nnnnn+nnnnnnnnnnnnn+nnnn',
-    'CCCCCCC.DDDDDD.cc.AAAAAAA.GGGG.HHHHHHHHH',
-    'CCCCCCC.DDDDDD.cc.AAAAAAA.GGGG.HHHHHHHHH',
-    'CCCCCCC.DDDDDD+cc.AAAAAAA+GGGG.HHHHHHHHH',
-    'CCCCCCC+DDDDDD.cc.AAAAAAA.GGGG.HHHHHHHHH',
-    'CCCCCCC.DDDDDD.cc+AAAAAAA.GGGG+HHHHHHHHH',
-    'CCCCCCC.DDDDDD.cc.AAAAAAA.GGGG.HHHHHHHHH',
-    'mmmmmmmmmm+mmmm+mmmmmmmmmmm+mmmmm+mmmmmm',
-    'mmm+mmmmmmmmmmmmmm++mmmmmm+mmmmmmm+mmmmm',
-    'PPPPPPPP.EEEE.VVVVVVVVVV.WWW.TTTTTTTTTTT',
-    'PPPPPPPP.EEEE.VVVVVVVVVV.WWW.TTTTTTTTTTT',
-    'PPPPPPPP.EEEE+VVVVVVVVVV.WWW.TTTTTTTTTTT',
-    'PPPPPPPP.EEEE.VVVVVVVVVV.WWW+TTTTTTTTTTT',
-    'PPPPPPPP.EEEE.VVVVVVVVVV.WWW.TTTTTTTTTTT',
-    'PPPPPPPP.EEEE.VVVVVVVVVV.WWW.TTTTTTTTTTT',
-    'sssss+ssssssssss+ssss+ssssssssssssss+sss',
-    'ssssssss+ssssssssssssss+ssssssssss+sssss',
-    'JJJJJJJJJJJJJJJJJ.SSSSSSSSSSS.IIIIIIIIII',
-    'JJJJJJJJJJJJJJJJJ.SSSSSSSSSSS.IIIIIIIIII',
-    'JJJJJJJJJJJJJJJJJ.SSSSSSSSSSS+IIIIIIIIII',
-    'JJJJJJJJJJJJJJJJJ+SSSSSSSSSSS.IIIIIIIIII',
-    'JJJJJJJJJJJJJJJJJ.SSSSSSSSSSS.IIIIIIIIII',
-    'JJJJJJJJJJJJJJJJJ.SSSSSSSSSSS.IIIIIIIIII',
+    'OOOOOOOnn.....BBBBBBB.....nn.LLLLLLLL.....',
+    'OOOOOOOnn.BBBBBBBBBBBBBBB.nn.LLLLLLLLLLL..',
+    'OOOOOOO+n.BBBBBBBBBBBBBBB.nn+LLLLLLLLLLL..',
+    'OOOOOOOnn+BBBBBBBBBBBBBBB+nn.LLLLLLLLLLL..',
+    'OOOOOOOnn.BBBBBBBBBBBBBBB.nn.LLLLLLLL.....',
+    'OOOnn+nnn.BBBBBBBBBBBBBBB.nnnnnn+nnnnnnn..',
+    'OOOnnnnnnnnnnnnnn+nnnnnnnnnnnnnnnnnnnnnn..',
+    '....+....nnnnnnnnnnnnnnnn+...+............',
+    'CCCCCCC..DDD..cc.AA......GGGGm..HHHH......',
+    'CCCCCCC.DDDDDDcc.AAAAAAA.GGGGmHHHHHHHHH...',
+    'CCCCCCC.DDDDDDcc.AAAAAAA.GGGG+HHHHHHHHH...',
+    'CCCCCCC+DDDDDD+c.AAAAAAA+GGGGmHHHHHHHHH...',
+    'CCCCCCC.DDDDDDcc+AAAAAAA.GGGG+HHHHHHHHH...',
+    'CCCCCCC.DDDDDDcc.AAAAAAA.GGGGmHHHHHHHHH...',
+    'CCC..+..DDDDDD++.AAAAAAA.....mHHHHHHHHH...',
+    'CCCmmmmmmm+mmmmm....+........mmmmm+mmmmmm.',
+    '...mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm.',
+    '....+.....+...mmmmmmmmmmmm+mm+.TTTT.......',
+    'PPPPPPPP.EEEE......+.....WWW.TTTTTTTTTTT..',
+    'PPPPPPPP.EEEE.VVVVVVVVVV.WWW.TTTTTTTTTTT..',
+    'PPPPPPPP+EEEE.VVVVVVVVVV.WWW.TTTTTTTTTTT..',
+    'PPPPPPPP.EEEE+VVVVVVVVVV+WWW+TTTTTTTTTTT..',
+    'PPPPPPPP.EEEE.VVVVVVVVVV.WWW.TTTTTTTTTTT..',
+    'PPPPPPPP.EEEE.VVVVVVVVVV.WWW.TTTTTTTTTTT..',
+    'sss+ssssss+ss.VVVVVVVVVV..+...sssss+ssssss',
+    'ssssssssssssssssss+sssssssssssssssssssssss',
+    '......+.....ss+sssssss+sssssss.....+......',
+    'JJJJJJJJJJJJJJJJJ.SSSSSSSSSSS..IIIIIIIIII.',
+    'JJJJJJJJJJJJJJJJJ.SSSSSSSSSSS..IIIIIIIIIII',
+    'JJJJJJJJJJJJJJJJJ.SSSSSSSSSSSSSIIIIIIIIIII',
+    'JJJJJJJJJJJJJJJJJ+SSSSSSSSSSSSSIIIIIIIIIII',
+    'JJJJJJJJJJJJJJJJJ.SSSSSSSSSSS..IIIIIIIIII.',
+    'JJJJJJJJJJJJJJJJJ.SSSSSSSSSSS..IIIIIIIIII.',
   ];
   const AREAS = {
     O: { n: 'Invernadero', c: ['#bfe8c4', '#a9dcb0'] }, B: { n: 'Salón de baile', c: ['#2b1150', '#3a1670'] },
@@ -85,6 +89,23 @@
     r.x0 = Math.min(r.x0, c * CS - MX); r.x1 = Math.max(r.x1, (c + 1) * CS - MX);
     r.z0 = Math.min(r.z0, f * CS - MZ); r.z1 = Math.max(r.z1, (f + 1) * CS - MZ);
   }
+  // los cuartos tienen forma de L: RECT es su rectángulo principal (el más grande), ahí van los muebles y misiones
+  Object.keys(RECT).forEach(k => {
+    if (esPasillo(k)) return;
+    let mejor = null, area = 0;
+    for (let f0 = 0; f0 < FIL; f0++) for (let c0 = 0; c0 < COL; c0++) {
+      if (PLANO[f0][c0] !== k) continue;
+      for (let f1 = f0; f1 < FIL && PLANO[f1][c0] === k; f1++) for (let c1 = c0; c1 < COL; c1++) {
+        let ok = true;
+        for (let f = f0; f <= f1 && ok; f++) if (PLANO[f][c1] !== k) ok = false;
+        if (!ok) break;
+        const ar = (f1 - f0 + 1) * (c1 - c0 + 1);
+        if (ar > area) { area = ar; mejor = [f0, c0, f1, c1]; }
+      }
+    }
+    const [f0, c0, f1, c1] = mejor;
+    RECT[k] = { x0: c0 * CS - MX, x1: (c1 + 1) * CS - MX, z0: f0 * CS - MZ, z1: (f1 + 1) * CS - MZ };
+  });
   Object.values(RECT).forEach(r => { r.cx = (r.x0 + r.x1) / 2; r.cz = (r.z0 + r.z1) / 2; r.w = r.x1 - r.x0; r.d = r.z1 - r.z0; });
 
   // ---------- ayudantes ----------
@@ -174,17 +195,20 @@
       f = fin + 1;
     }
   }
+  const nParedes = cajas.length;
   // marcos de neón y tapetes en las puertas
   let texTapete = null;
   const marcoMat = neon('#3ccf7f', 1.1);
   const hojas = []; // puertas que se cierran con el sabotaje
   const matHoja = new T.MeshBasicMaterial({ color: new T.Color('#ff2e4d').multiplyScalar(1.6), transparent: true, opacity: 0.6 });
+  const geoArco = new T.TorusGeometry(PUERTA / 2, 0.08, 6, 20, Math.PI);
   function marco(x, z, giro, k) {
     const g = new T.Group(); g.position.set(x, 0, z); g.rotation.y = giro ? Math.PI / 2 : 0; grupo.add(g);
     const hoja = new T.Mesh(new T.BoxGeometry(PUERTA, ALTO - 0.1, 0.16), matHoja); hoja.position.y = (ALTO - 0.1) / 2; hoja.visible = false; g.add(hoja);
     hojas.push({ k, m: hoja, cerrada: false, caja: giro ? [x - 0.15, z - PUERTA / 2, x + 0.15, z + PUERTA / 2] : [x - PUERTA / 2, z - 0.15, x + PUERTA / 2, z + 0.15] });
-    [-PUERTA / 2, PUERTA / 2].forEach(dx => { const p = new T.Mesh(new T.BoxGeometry(0.14, ALTO, 0.36), marcoMat); p.position.set(dx, ALTO / 2, 0); g.add(p); });
-    const arco = new T.Mesh(new T.BoxGeometry(PUERTA + 0.14, 0.14, 0.36), marcoMat); arco.position.y = ALTO; g.add(arco);
+    const H0 = ALTO - PUERTA / 2; // los postes llegan hasta aquí y arriba va un arco redondo
+    [-PUERTA / 2, PUERTA / 2].forEach(dx => { const p = new T.Mesh(new T.BoxGeometry(0.14, H0, 0.36), marcoMat); p.position.set(dx, H0 / 2, 0); g.add(p); });
+    const arco = new T.Mesh(geoArco, marcoMat); arco.position.y = H0; g.add(arco);
   }
   for (let f = 0; f < FIL; f++) for (let c = 0; c < COL; c++) {
     if (PLANO[f][c] !== '+') continue;
@@ -408,11 +432,13 @@
       const tapa = f.z > pz && f.z - pz < 6.5 && px > f.x0 - 3 && px < f.x1 + 3;
       f.op += ((tapa ? 0.32 : 1) - f.op) * k;
       f.m.material.opacity = f.op; f.m.material.depthWrite = f.op > 0.95;
+      if (f.tapa) f.tapa.visible = f.op > 0.6;
     });
   }
 
   // ---------- colisiones ----------
-  const RAD = 0.42;
+  const RAD = 0.42, RF = 1.8;
+  const esquinas = []; // esquinas redondeadas { x, z (centro del círculo), dx, dz (hacia dónde queda la esquina) }
   function limites(p) {
     p.x = Math.max(-MX + RAD, Math.min(MX - RAD, p.x));
     p.z = Math.max(-MZ + RAD, Math.min(MZ - RAD, p.z));
@@ -431,6 +457,12 @@
         const op = [[p.x - c[0], -1, 0], [c[2] - p.x, 1, 0], [p.z - c[1], 0, -1], [c[3] - p.z, 0, 1]].sort((a, b) => a[0] - b[0])[0];
         p.x += op[1] * (op[0] + RAD); p.z += op[2] * (op[0] + RAD);
       }
+    }
+    for (const e of esquinas) { // en una esquina redonda no puedes meterte hasta el rincón
+      const ox = p.x - e.x, oz = p.z - e.z;
+      if (ox * e.dx <= 0 || oz * e.dz <= 0 || Math.abs(ox) > RF || Math.abs(oz) > RF) continue; // solo dentro del cuadrito de la esquina
+      const d = Math.hypot(ox, oz), lim = RF - RAD;
+      if (d > lim) { p.x = e.x + ox / d * lim; p.z = e.z + oz / d * lim; }
     }
     return p;
   }
@@ -467,6 +499,47 @@
     [-0.8, 0, 0.8].forEach((dz, i) => caja(0.2, 0.12, 0.28, std(['#9aa5b1', '#ffb703', '#e63946'][i], { metalness: 0.5 }), TALLER.x, 1.02, TALLER.z + dz, false));
     const holo = new T.Mesh(new T.OctahedronGeometry(0.28), neon('#5effa0', 2)); holo.position.set(TALLER.x, 1.7, TALLER.z); grupo.add(holo);
     animados.push(t => { holo.rotation.y = t * 2; holo.position.y = 1.7 + Math.sin(t * 3) * 0.08; borde.material.color.setRGB(0.5, 2.2 + Math.sin(t * 4) * 0.4, 1.2); });
+  })();
+
+  // ---------- esquinas redondas y columnas: para que la mansión no se vea tan cuadrada ----------
+  (function () {
+    const muebles = cajas.slice(nParedes);
+    const choca = (a, b, c, d) => muebles.some(m => m[0] < Math.max(a, c) && m[2] > Math.min(a, c) && m[1] < Math.max(b, d) && m[3] > Math.min(b, d));
+    // pieza curva para la esquina (+x,+z) de un círculo con centro en 0,0
+    const forma = new T.Shape();
+    forma.moveTo(RF, 0); forma.lineTo(RF, -RF); forma.lineTo(0, -RF); forma.absarc(0, 0, RF, -Math.PI / 2, 0, false);
+    const geoCurva = new T.ExtrudeGeometry(forma, { depth: ALTO, bevelEnabled: false, curveSegments: 10 }).rotateX(-Math.PI / 2);
+    const geoBorde = new T.TorusGeometry(RF, 0.03, 4, 10, Math.PI / 2).rotateX(Math.PI / 2);
+    const bordeMat = neon('#2ee6d6', 1.2), bordeFrente = neon('#ff3d9a', 1.2);
+    for (let f = 0; f < FIL; f++) for (let c = 0; c < COL; c++) {
+      const ch = PLANO[f][c]; if (!esPiso(ch) || ch === '+') continue;
+      [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([dc, df]) => {
+        if (!hayPared(ch, letra(f, c + dc)) || !hayPared(ch, letra(f + df, c))) return;
+        const vx = cx(c) + dc * CS / 2, vz = cz(f) + df * CS / 2;
+        if (choca(vx, vz, vx - dc * RF, vz - df * RF)) return; // ahí hay un mueble: se queda cuadrada
+        const e = { x: vx - dc * RF, z: vz - df * RF, dx: dc, dz: df };
+        esquinas.push(e);
+        const frente = df > 0; // esquina del lado de la cámara: se vuelve transparente si te tapa
+        const g = new T.Group(); g.position.set(e.x, 0, e.z); g.scale.set(dc, 1, df); grupo.add(g);
+        const m = new T.Mesh(geoCurva, frente ? std('#5b2d99', { roughness: 0.85, transparent: true }) : matPared); m.castShadow = true; m.receiveShadow = true; g.add(m);
+        const b = new T.Mesh(geoBorde, frente ? bordeFrente : bordeMat); b.position.y = ALTO + 0.02; g.add(b);
+        if (frente) frentes.push({ m, z: vz, x0: vx - RF, x1: vx + RF, op: 1 });
+      });
+    }
+    const tapaMat = neon('#ffd93d', 1.6);
+    // columnas redondas donde la pared hace punta hacia adentro (rincones de las L y pasillos que doblan)
+    for (let f = 1; f < FIL; f++) for (let c = 1; c < COL; c++) {
+      const q = [letra(f - 1, c - 1), letra(f - 1, c), letra(f, c - 1), letra(f, c)];
+      if (q.includes('+')) continue;
+      const z4 = q.map((ch, i) => esPiso(ch) ? zona[f - 1 + (i >> 1)][c - 1 + (i & 1)] : '.');
+      const k = z4.find(z => z4.filter(y => y === z).length === 3);
+      if (!k || k === '.') continue;
+      const x = c * CS - MX, z = f * CS - MZ;
+      const col = cilindro(0.3, ALTO + 0.06, std('#6a35b0', { roughness: 0.6, transparent: true }), x, (ALTO + 0.06) / 2, z, false, 16);
+      const tapa = cilindro(0.34, 0.08, tapaMat, x, ALTO + 0.08, z, false, 16);
+      frentes.push({ m: col, z, x0: x, x1: x, op: 1, tapa }); // si te tapa, se vuelve transparente
+
+    }
   })();
 
   // lugares de salida alrededor de la mesa del vestíbulo
