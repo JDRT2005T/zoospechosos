@@ -2,7 +2,7 @@
 // Páginas y código: primero internet (para tener siempre lo último), si no hay, lo guardado.
 // Librerías, íconos y fuentes: lo guardado primero (no cambian).
 // Nunca guarda nada de Supabase (cuentas, salas, tiempo real).
-const CACHE = 'zoo-v11'; // cambiar si cambian vendor/ o iconos/
+const CACHE = 'zoo-v12'; // cambiar si cambian vendor/ o iconos/
 const BASE = ['./', 'index.html', 'css/estilo.css', 'js/arranque.js', 'js/personaje.js', 'js/particulas.js', 'js/app.js', 'js/salon.js', 'js/mansion.js', 'js/sala.js', 'js/misiones.js', 'js/sabotaje.js', 'js/juego.js', 'js/reunion.js', 'js/caceria.js', 'js/pwa.js',
   'vendor/three.module.js', 'vendor/jsm/postprocessing/EffectComposer.js', 'vendor/jsm/postprocessing/RenderPass.js', 'vendor/jsm/postprocessing/UnrealBloomPass.js', 'vendor/jsm/postprocessing/OutputPass.js', 'vendor/jsm/postprocessing/ShaderPass.js', 'vendor/jsm/postprocessing/MaskPass.js', 'vendor/jsm/postprocessing/Pass.js', 'vendor/jsm/shaders/CopyShader.js', 'vendor/jsm/shaders/LuminosityHighPassShader.js', 'vendor/jsm/shaders/OutputShader.js', 'vendor/jsm/environments/RoomEnvironment.js', 'vendor/supabase.js', 'manifest.webmanifest', 'iconos/icono-192.png', 'iconos/icono-512.png'];
 

@@ -645,6 +645,21 @@ body.rn-exp #caza-alarma, body.rn-exp #caza-anuncio { display: none; }
 #b-disparar.listo { opacity: 1; filter: none; background: radial-gradient(circle at 40% 35%, #ff9a3c, #d62828); border-color: #ffd0a0; box-shadow: 0 0 28px rgba(255, 120, 40, .7); animation: latido .8s infinite; }
 #b-disparar.listo:active { transform: scale(.9); }
 #b-disparar[hidden] { display: none !important; }
+/* Cacería parte 2: trampas, jaula y furia */
+#b-trampa { right: calc(max(20px, env(safe-area-inset-right)) + 116px); bottom: calc(max(20px, env(safe-area-inset-bottom)) + 116px); opacity: .55; filter: grayscale(1); }
+#b-trampa.listo { opacity: 1; filter: none; background: radial-gradient(circle at 40% 35%, #b8bec9, #4a4f5a); border-color: #ff9a9a; box-shadow: 0 0 22px rgba(255, 46, 46, .6); }
+#b-trampa.listo:active { transform: scale(.9); }
+#jaula-aviso { position: fixed; left: 50%; top: max(64px, calc(env(safe-area-inset-top) + 56px)); transform: translateX(-50%); z-index: 7; display: none; padding: 8px 16px; border-radius: 999px;
+  background: rgba(60, 40, 0, .88); border: 2px solid #ffcf4d; color: #ffe9a8; font-weight: 900; font-size: 15px; text-align: center; pointer-events: none; max-width: calc(100vw - 32px); box-shadow: 0 0 18px rgba(255, 207, 77, .5); }
+#jaula-aviso.ver { display: block; animation: aparecer .35s; }
+.etiqueta.preso { border-color: #ffcf4d !important; }
+.etiqueta.preso::before { content: '🔒 '; }
+body.furia #caza-alarma { display: block; background: radial-gradient(circle, rgba(255, 0, 0, 0) 50%, rgba(255, 30, 0, .4) 100%); animation-duration: .6s; }
+body.furia #b-matar.listo { box-shadow: 0 0 40px rgba(255, 60, 0, .95); }
+@media (orientation: landscape) and (max-height: 560px) {
+  #b-trampa { right: calc(max(14px, env(safe-area-inset-right)) + 88px); bottom: calc(max(12px, env(safe-area-inset-bottom)) + 84px); }
+  #jaula-aviso { top: max(44px, env(safe-area-inset-top)); font-size: 12px; padding: 5px 12px; }
+}
 .etiqueta.presa { border-color: #ff2e2e !important; background: rgba(120, 0, 20, .85) !important; box-shadow: 0 0 16px rgba(255, 46, 46, .8); }
 .etiqueta .dano { position: absolute; left: 50%; top: -6px; transform: translateX(-50%); font-family: 'Lilita One'; font-size: 22px; color: #ffd93d; text-shadow: 0 2px 0 #000, 0 0 10px rgba(255, 60, 0, .8); animation: danoSube .9s ease-out forwards; pointer-events: none; }
 .etiqueta .dano.fin { color: #5effa0; font-size: 26px; }

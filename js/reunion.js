@@ -243,7 +243,8 @@
     if (m.id) { const c = $(`.rn-j[data-id="${m.id}"]`); if (c) c.classList.add('expulsado'); }
     A.bip(330, 0.3, 'triangle', 0.06);
     const esImp = m.id && G().roles[m.id] === 'i';
-    luego(4000, () => fundido(() => { $('#reunion').classList.remove('ver'); if (esImp) cazar(m); else expulsar(m); }));
+    const inocente = m.id && G().roles[m.id] === 't' && G().vivo(m.id);
+    luego(4000, () => fundido(() => { $('#reunion').classList.remove('ver'); if (esImp) cazar(m); else if (inocente) encarcelar(m); else expulsar(m); }));
   }
   function fundido(f) {
     const d = $('#fundido'); d.classList.add('ver');
@@ -325,6 +326,17 @@
     g.limpiarRestos(); g.reubicar(); g.reiniciarEspera();
     botonDesde = Date.now() + ESPERA_BOTON;
     ZooCaceria.empezar(m.id, m.caza || {});
+  }
+  // 🔒 votaron a un inocente: no lo expulsan, va a la jaula del Sótano (y el impostor se enfurece)
+  function encarcelar(m) {
+    fase = null; datos = null; votos = {};
+    const g = G();
+    g.limpiarRestos();
+    g.reiniciarEspera();
+    ZooCaceria.encerrar(m.id); // primero: así reubicar() no lo saca de la jaula (y la furia acorta la espera)
+    g.reubicar();
+    botonDesde = Date.now() + ESPERA_BOTON;
+    if (S().soyHost()) setTimeout(g.revisarFin, 800);
   }
   function escribir(el, txt, espera, listo) {
     const letras = [...txt]; let i = 0;

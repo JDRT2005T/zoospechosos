@@ -96,7 +96,7 @@
     if (!activo || !soyImpostor() || soyFantasma() || bloqueado()) return;
     if (Date.now() < enfriaHasta || !objetivo) return;
     const v = S().pjs.get(objetivo); if (!v) return;
-    enfriaHasta = Date.now() + S().cfg().enfriamiento * 1000;
+    enfriaHasta = Date.now() + (ZooCaceria.furia() ? 6 : S().cfg().enfriamiento) * 1000; // 😡 con furia casi no espera
     const yp = S().yoPos;
     S().enviar('muerte', { a: miId(), v: objetivo, x: +v.cx.toFixed(2), z: +v.cz.toFixed(2), r: +v.cr.toFixed(2), ax: +yp.x.toFixed(2), az: +yp.z.toFixed(2), tipo: (S().yo && S().yo.muerte) || 'granada' });
   });
@@ -753,7 +753,7 @@
       expulsar(id) { if (!roles[id] || muertos.has(id)) return; muertos.add(id); hacerFantasma(id); if (id === miId()) ZooMisiones.cerrar(); pintarHud(); },
       // después de la reunión: todos a la mesa del vestíbulo
       reubicar() {
-        const ids = Object.keys(roles), yp = S().yoPos;
+        const ids = Object.keys(roles).filter(id => !ZooCaceria.preso(id)), yp = S().yoPos; // los de la jaula se quedan ahí
         ids.forEach((id, i) => {
           const p = Mansion.salida(i, ids.length);
           if (id === miId()) { yp.x = p.x; yp.z = p.z; yp.r = Math.PI; }
@@ -762,6 +762,7 @@
         S().enviarPos(true); S().reiniciarCamara();
       },
       reiniciarEspera() { enfriaHasta = Date.now() + S().cfg().enfriamiento * 1000; },
+      esperar(ms) { enfriaHasta = Date.now() + ms; },
     },
     velocidad: () => soyFantasma() ? 1.25 : ZooCaceria.velocidad(),
     // los vivos no ven a los fantasmas

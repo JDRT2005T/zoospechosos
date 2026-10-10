@@ -36,9 +36,20 @@
   const aura = new T.Mesh(new T.RingGeometry(0.6, 0.85, 32), window.neon('#ff2e2e', 3));
   aura.rotation.x = -Math.PI / 2; aura.visible = false; A.escena.add(aura);
 
+  // ---------- parte 2: jaula 🔒, trampas 🪤 y furia 😡 ----------
+  const TRAMPAS = 3, FURIA = 30000, ATRAPADO = 3000, RADIO_TRAMPA = 0.55;
+  const presos = [];           // tripulantes inocentes en la jaula del Sótano
+  let furiaHasta = 0, furiaAviso = false, ultimoHumo = 0;
+  const trampas = new Map();   // id -> { x, z, de, obj }
+  const atrapados = new Map(); // jugador -> hasta cuándo está atrapado
+  const cepos = [];            // trampas cerradas en los pies { obj, hasta }
+  let misTrampas = 0, trampaEspera = 0, atrapadoHasta = 0;
+
   const soyImp = () => G().rol(miId()) === 'i';
   const soyPresa = () => caza && caza.imp === miId();
-  const puedoCazar = () => partida && caza && !soyImp() && G().vivo(miId()) && !ZooJuego.soyFantasma();
+  const soyPreso = () => presos.includes(miId());
+  const puedoCazar = () => partida && caza && !soyImp() && G().vivo(miId()) && !ZooJuego.soyFantasma() && !soyPreso();
+  const furia = () => partida && ahora() < furiaHasta;
 
   // ================= DIBUJOS =================
   const toon = c => new T.MeshToonMaterial({ color: c });
@@ -93,6 +104,22 @@
     }
     g.userData.mat = mat; g.scale.setScalar(0.2); grupo.add(g); return g;
   }
+  // 🪤 trampa de oso: abierta (en el piso) o cerrada (en los pies de alguien)
+  function hacerTrampa(x, z, cerrada) {
+    const g = new T.Group(); g.position.set(x, 0.02, z);
+    const metal = new T.MeshStandardMaterial({ color: '#9aa0aa', metalness: 0.75, roughness: 0.3 });
+    g.add(malla(new T.CylinderGeometry(0.15, 0.17, 0.05, 14), metal, 0, 0.025, 0));
+    [1, -1].forEach(s => {
+      const q = new T.Group(); q.position.y = 0.04; q.rotation.x = cerrada ? -s * 1.35 : 0; g.add(q);
+      const arco = malla(new T.TorusGeometry(0.36, 0.03, 6, 16, Math.PI), metal); arco.rotation.x = s * Math.PI / 2; q.add(arco);
+      for (let k = 0; k < 6; k++) {
+        const a = (k + 0.5) / 6 * Math.PI;
+        q.add(malla(new T.ConeGeometry(0.03, 0.1, 5), metal, Math.cos(a) * 0.36, 0.05, s * Math.sin(a) * 0.36));
+      }
+    });
+    if (!cerrada) { const aro = new T.Mesh(new T.RingGeometry(0.44, 0.5, 24), window.neon('#ff2e2e', 1.6)); aro.rotation.x = -Math.PI / 2; aro.position.y = 0.01; g.add(aro); }
+    grupo.add(g); return g;
+  }
   function quitar(o) { if (o.parent) o.parent.remove(o); o.traverse(x => { if (x.geometry) x.geometry.dispose(); }); }
 
   // ================= SONIDOS =================
@@ -146,14 +173,15 @@
     const roles = G().roles;
     const tripulantes = Object.keys(roles).filter(id => roles[id] === 't' && G().vivo(id)).length;
     const max = 40 + 30 * Math.max(1, tripulantes);
-    caza = { imp, max, vida: max, inicio: ahora() + VENTAJA, fin: ahora() + VENTAJA + (S().cfg().caza || 180) * 1000 };
+    caza = { imp, max, piezas: (d && d.piezas) || {}, vida: max, inicio: ahora() + VENTAJA, fin: ahora() + VENTAJA + (S().cfg().caza || 180) * 1000 };
     limpiarPiezas();
+    misTrampas = soyImp() ? TRAMPAS : 0; trampaEspera = 0;
     if (!arma && puedoCazar()) misPiezas = ((d && d.piezas && d.piezas[miId()]) || []).map(([x, z, i]) => ({ x, z, i, obj: hacerPieza(x, z, PIEZAS[i]) }));
     pintarEstaciones();
     document.body.classList.add('caza');
     const yo = imp === miId();
     anuncio(yo ? '😈 ¡TE DESCUBRIERON!' : `🔪 ¡${nombre(imp)} ES EL IMPOSTOR!`,
-      yo ? '¡Corre y escóndete! Sobrevive hasta que se acabe el tiempo' : soyImp() ? 'Descubrieron a tu compañero… ¡ayúdalo a escapar!' : ZooJuego.soyFantasma() ? '👻 Mira cómo lo cazan' : arma ? '¡Ya tienes tu arma: a cazarlo!' : '¡Junta 3 piezas, arma tu arma en el Garaje y cázalo!',
+      yo ? '¡Corre y escóndete! Sobrevive hasta que se acabe el tiempo · tienes 3 trampas 🪤' : soyImp() ? 'Descubrieron a tu compañero… ¡ayúdalo con tus 3 trampas 🪤!' : soyPreso() ? '🔒 Sigues en la jaula… ¡que alguien jale la palanca!' : ZooJuego.soyFantasma() ? '👻 Mira cómo lo cazan' : arma ? '¡Ya tienes tu arma: a cazarlo!' : '¡Junta 3 piezas, arma tu arma en el Garaje y cázalo!',
       VENTAJA, true);
     sirena();
     pintarHud(true);
@@ -186,6 +214,11 @@
         const M = Mansion.TALLER;
         l.push({ x: M.x - 0.95, z: M.z, e: '🛠️', tit: '🛠️ Armar tu arma', j: 'tocar', o: { n: 10, emoji: '🔨', txt: '¡Martilla para armar tu arma!' }, ok: '🎉 ¡ARMA LISTA!', alListo: armar });
       }
+    }
+    // 🔓 la palanca de la jaula (cualquier tripulante vivo y libre la puede jalar)
+    if (partida && presos.length && !soyImp() && !soyPreso() && G().vivo(miId()) && !ZooJuego.soyFantasma()) {
+      const P = Mansion.JAULA.palanca;
+      l.push({ x: P.x, z: P.z + 0.45, e: '🔓', tit: '🔓 Abrir la jaula', j: 'mantener', o: { seg: 1.5, emoji: '🔓', txt: 'Mantén presionada la palanca' }, ok: '🔓 ¡JAULA ABIERTA!', alListo: () => { if (G().vivo(miId())) S().enviar('liberar', { de: miId() }); } });
     }
     ZooMisiones.setExtras(l, 'caza');
   }
@@ -325,6 +358,105 @@
     v.etiqueta.appendChild(s); setTimeout(() => s.remove(), 900);
   }
 
+  // ================= 🔒 LA JAULA (votaron a un inocente) =================
+  // lo llama reunion.js en todos los celulares cuando el votado NO era el impostor
+  function lugarJaula(i) {
+    const J = Mansion.JAULA, n = presos.length;
+    if (n <= 1) return { x: J.x, z: J.z };
+    const a = i / n * Math.PI * 2;
+    return { x: J.x + Math.cos(a) * 0.45, z: J.z + Math.sin(a) * 0.45 };
+  }
+  function ponerPresos() {
+    const yp = S().yoPos;
+    presos.forEach((id, i) => {
+      const p = lugarJaula(i);
+      if (id === miId()) { yp.x = p.x; yp.z = p.z; }
+      const v = S().pjs.get(id); if (v) { v.cx = v.tx = p.x; v.cz = v.tz = p.z; v.alto = 0; v.efecto = null; }
+    });
+  }
+  function encerrar(id) {
+    if (!partida) return;
+    if (G().vivo(id) && !presos.includes(id)) presos.push(id);
+    ponerPresos();
+    if (id === miId()) { S().yoPos.r = Math.PI / 2; S().enviarPos(true); ZooMisiones.cerrar(); }
+    // 😡 el impostor se pone furioso: más rápido y casi sin esperar para matar
+    furiaHasta = ahora() + FURIA; furiaAviso = false;
+    if (soyImp()) G().esperar(3000);
+    document.body.classList.toggle('furia', soyImp());
+    if (id === miId()) anuncio('🔒 ¡TE ENCERRARON!', 'No eras el impostor… espera a que alguien jale la palanca del Sótano', 4200, false);
+    else if (soyImp()) anuncio('😡 ¡FURIA!', `Encerraron a ${nombre(id)} por error · 30 s más rápido y matas sin esperar`, 4200, false);
+    else anuncio(`🔒 ¡${nombre(id).toUpperCase()} NO ERA EL IMPOSTOR!`, '¡Sácalo de la jaula del Sótano con la palanca! · 😡 El impostor está FURIOSO 30 s', 4600, false);
+    A.bip(110, 0.6, 'sawtooth', 0.07); setTimeout(() => A.bip(90, 0.7, 'sawtooth', 0.07), 250);
+    setTimeout(() => A.bip(1800, 0.05, 'square', 0.04), 700); // ¡clac! se cierra la jaula
+    pintarEstaciones(); pintarHud(true);
+  }
+  function alLiberar(m) {
+    if (!partida || !presos.length || !G().vivo(m.de) || presos.includes(m.de)) return;
+    const J = Mansion.JAULA, libres = presos.splice(0), yp = S().yoPos;
+    libres.forEach((id, i) => {
+      const p = Mansion.colisionar({ x: J.x - J.r - 0.8, z: J.z - 0.6 + i * 0.8 });
+      if (id === miId()) { yp.x = p.x; yp.z = p.z; yp.r = -Math.PI / 2; S().enviarPos(true); }
+      const v = S().pjs.get(id); if (v) { v.cx = v.tx = p.x; v.cz = v.tz = p.z; }
+      S().texto(id, '🥳 ¡LIBRE!');
+    });
+    // si están cazando, el liberado recibe sus piezas para armar su arma
+    if (libres.includes(miId()) && puedoCazar() && !arma && !misPiezas.length) misPiezas = (caza.piezas[miId()] || []).map(([x, z, i]) => ({ x, z, i, obj: hacerPieza(x, z, PIEZAS[i]) }));
+    J.jalar = 1.2;
+    const cerca = Mansion.cuartoDe(yp.x, yp.z) === Mansion.cuartoDe(J.x, J.z);
+    if (cerca) { Part.confeti({ x: J.x, y: 1.5, z: J.z }); Part.chispas({ x: J.x, y: 2, z: J.z }); }
+    for (let i = 0; i < 3; i++) setTimeout(() => A.bip(523 * Math.pow(1.26, i), 0.14, 'triangle', 0.05), i * 110);
+    if (libres.includes(miId())) A.toast(`🔓 ¡${nombre(m.de)} te sacó de la jaula! ¡Eres libre!`, 2500);
+    else A.toast(`🔓 ${nombre(m.de)} abrió la jaula: ${libres.map(nombre).join(', ')} ${libres.length > 1 ? 'están libres' : 'está libre'}`, 2500);
+    pintarEstaciones(); pintarHud(true);
+  }
+
+  // ================= 🪤 TRAMPAS DEL IMPOSTOR (solo en la cacería) =================
+  const puedoTrampa = () => partida && caza && soyImp() && G().vivo(miId()) && !ZooJuego.soyFantasma() && !terminando;
+  $('#b-trampa').addEventListener('click', () => {
+    if (!puedoTrampa() || ZooJuego.bloqueado() || ZooSabotaje.yoEnVent()) return;
+    if (misTrampas <= 0) return A.toast('Ya pusiste tus 3 trampas 🪤');
+    if (ahora() < trampaEspera) return;
+    const yp = S().yoPos;
+    for (const t of trampas.values()) if (Math.hypot(t.x - yp.x, t.z - yp.z) < 1.2) return A.toast('Ya hay una trampa aquí 🪤');
+    misTrampas--; trampaEspera = ahora() + 1500;
+    S().enviar('trampa', { id: miId().slice(0, 6) + '-t' + (++contador), de: miId(), x: r2(yp.x), z: r2(yp.z) });
+  });
+  function alTrampa(m) {
+    if (!partida || !caza || trampas.has(m.id)) return;
+    trampas.set(m.id, { x: m.x, z: m.z, de: m.de, obj: hacerTrampa(m.x, m.z, false) });
+    if (m.de === miId()) { A.bip(300, 0.06, 'square', 0.05); setTimeout(() => A.bip(900, 0.05, 'square', 0.04), 90); A.toast(`🪤 ¡Trampa puesta! Te quedan ${misTrampas}`, 1200); }
+  }
+  // cada tripulante revisa si él mismo pisó una (su celular sabe dónde está de verdad)
+  function revisarTrampas() {
+    if (!trampas.size || !puedoCazar() || ZooSabotaje.yoEnVent() || ahora() < atrapadoHasta) return;
+    const yp = S().yoPos;
+    for (const [id, t] of trampas) {
+      if (Math.hypot(t.x - yp.x, t.z - yp.z) < RADIO_TRAMPA) {
+        quitar(t.obj); trampas.delete(id);
+        atrapadoHasta = ahora() + ATRAPADO; // se congela ya, sin esperar la red
+        S().enviar('pisada', { t: id, id: miId(), de: t.de, x: r2(t.x), z: r2(t.z) });
+        return;
+      }
+    }
+  }
+  function alPisada(m) {
+    if (!partida) return;
+    const t = trampas.get(m.t); if (t) { quitar(t.obj); trampas.delete(m.t); }
+    atrapados.set(m.id, ahora() + ATRAPADO);
+    const yp = S().yoPos, vol = volDe(m.x, m.z);
+    cepos.push({ obj: hacerTrampa(m.x, m.z, true), hasta: ahora() + ATRAPADO });
+    if (vol > 0) { A.bip(1900, 0.04, 'square', 0.08 * vol); setTimeout(() => A.bip(160, 0.25, 'square', 0.08 * vol), 40); }
+    if (Mansion.cuartoDe(m.x, m.z) === Mansion.cuartoDe(yp.x, yp.z)) Part.chispas({ x: m.x, y: 0.4, z: m.z });
+    S().texto(m.id, '😫 ¡AY! ¡UNA TRAMPA!');
+    if (m.id === miId()) { atrapadoHasta = ahora() + ATRAPADO; S().sacudir(0.35); A.toast('🪤 ¡CAÍSTE EN UNA TRAMPA! No te puedes mover 3 s', 2200); }
+    else if (soyImp()) A.toast(`🪤 ¡${nombre(m.id)} cayó en ${m.de === miId() ? 'tu' : 'una'} trampa! 😈`, 1800);
+  }
+  function limpiarTrampas() {
+    trampas.forEach(t => quitar(t.obj)); trampas.clear();
+    cepos.forEach(c => quitar(c.obj)); cepos.length = 0;
+    atrapados.clear(); atrapadoHasta = 0; misTrampas = 0;
+  }
+
   // ================= FIN DE LA CACERÍA =================
   function cazado(de, a) {
     if (terminando) return;
@@ -350,7 +482,7 @@
     caza = null; efImp = null; terminando = false;
     proys.forEach(p => quitar(p.obj)); proys.length = 0;
     nubes.forEach(n => quitar(n.obj)); nubes.length = 0;
-    limpiarPiezas(); aura.visible = false;
+    limpiarPiezas(); limpiarTrampas(); aura.visible = false;
     document.body.classList.remove('caza');
     $('#caza-anuncio').classList.remove('ver');
     pintarEstaciones(); pintarHud(true);
@@ -361,12 +493,48 @@
     if (ahora() > caza.fin) { terminando = true; S().enviar('fin', { gana: 'i', roles: G().roles }); }
   }, 500);
 
+  // ================= CADA CUADRO: jaula, trampas y furia =================
+  function cuadroParte2(dt, t) {
+    // los presos que murieron o se fueron ya no están en la jaula
+    const presentes = new Set(S().jugadores.map(j => j.id));
+    for (let i = presos.length - 1; i >= 0; i--) if (!G().vivo(presos[i]) || !presentes.has(presos[i])) { presos.splice(i, 1); pintarEstaciones(); }
+    if (presos.length) ponerPresos();
+    $('#jaula-aviso').classList.toggle('ver', soyPreso());
+    // 😡 furia (solo los impostores y fantasmas ven el humo que les sale de la cabeza)
+    if (furiaHasta && !furia() && !furiaAviso) { furiaAviso = true; document.body.classList.remove('furia'); if (soyImp()) A.toast('😮‍💨 Se te pasó la furia', 1500); }
+    if (furia() && (soyImp() || ZooJuego.soyFantasma()) && t - ultimoHumo > 0.25) {
+      ultimoHumo = t;
+      Object.keys(G().roles).forEach(id => {
+        if (G().rol(id) !== 'i' || !G().vivo(id)) return;
+        const v = S().pjs.get(id); if (v && v.obj && v.obj.visible) Part.humo({ x: v.cx, y: 2.1, z: v.cz });
+      });
+    }
+    // 🪤 botón de trampa
+    const bt = $('#b-trampa');
+    bt.hidden = !(puedoTrampa() && misTrampas > 0);
+    if (!bt.hidden) {
+      bt.classList.toggle('listo', ahora() >= trampaEspera && !ZooJuego.bloqueado() && !ZooSabotaje.yoEnVent());
+      bt.querySelector('small').textContent = 'TRAMPA ×' + misTrampas;
+    }
+    // las trampas solo las ven los impostores (y los fantasmas), en su mismo cuarto
+    const yp = S().yoPos, cu = Mansion.cuartoDe(yp.x, yp.z), fan = ZooJuego.soyFantasma();
+    const loVeo = (x, z) => fan || (Mansion.cuartoDe(x, z) === cu && Math.hypot(x - yp.x, z - yp.z) < 10);
+    trampas.forEach(tr => { tr.obj.visible = (soyImp() || fan) && loVeo(tr.x, tr.z); });
+    for (let i = cepos.length - 1; i >= 0; i--) {
+      const c = cepos[i];
+      if (ahora() > c.hasta) { quitar(c.obj); cepos.splice(i, 1); } else c.obj.visible = loVeo(c.obj.position.x, c.obj.position.z);
+    }
+    atrapados.forEach((h, id) => { if (ahora() > h) atrapados.delete(id); });
+    revisarTrampas();
+  }
+
   // ================= CADA CUADRO =================
   A.alCuadro.push((dt, t) => {
     if (!partida) return;
     moverBalas(dt);
     moverNubes(dt, t);
     misPiezas.forEach((p, i) => { p.obj.userData.s.position.y = 0.85 + Math.sin(t * 3 + i) * 0.1; p.obj.rotation.y = t; });
+    cuadroParte2(dt, t);
     const bd = $('#b-disparar');
     if (!caza) { bd.hidden = true; aura.visible = false; return; }
     // si el impostor se fue de la partida, se acaba la cacería
@@ -449,7 +617,10 @@
       if (e.ef === 'empujon') c.rotation.x = e.t * 16 * (1 - q);
       if (e.ef === 'pedo') { c.rotation.z = Math.sin(t * 12) * 0.22; c.scale.set(1 + Math.sin(t * 20) * 0.05, 1, 1); }
       u.cazaPose = true;
+    } else if (atrapados.has(id) && !v.fantasma) { // 🪤 pataleando en la trampa
+      c.rotation.set(0, 0, Math.sin(t * 22) * 0.12); c.scale.set(1, 0.92 + Math.abs(Math.sin(t * 11)) * 0.08, 1); u.cazaPose = true;
     } else if (u.cazaPose) { c.rotation.set(0, 0, 0); c.scale.set(1, 1, 1); u.cazaPose = false; }
+    v.etiqueta.classList.toggle('preso', presos.includes(id));
   }
 
   // ================= LO QUE USAN LOS DEMÁS =================
@@ -458,7 +629,9 @@
   function limpiar() {
     if (caza || proys.length || nubes.length || misPiezas.length) acabar();
     caza = null; arma = null; municion = 0; armas.clear(); efImp = null; terminando = false;
-    document.body.classList.remove('caza');
+    limpiarTrampas(); presos.length = 0; furiaHasta = 0;
+    document.body.classList.remove('caza', 'furia');
+    $('#b-trampa').hidden = true;
     $('#b-disparar').hidden = true; $('#caza-hud').classList.remove('ver'); $('#caza-anuncio').classList.remove('ver');
     ZooMisiones.setExtras([], 'caza');
   }
@@ -468,18 +641,25 @@
     activa: () => !!caza,
     // el impostor perseguido no se mueve solo mientras está aturdido; los tripulantes esperan los 5 s de ventaja
     bloquea() {
+      if (partida && (soyPreso() || ahora() < atrapadoHasta)) return true; // en la jaula o en una trampa
       if (!partida || !caza) return false;
       if (soyPresa() && efImp && ATURDE.includes(efImp.ef)) return true;
       return ahora() < caza.inicio && !soyImp() && !ZooJuego.soyFantasma();
     },
     velocidad() {
-      if (!soyPresa()) return 1;
-      return 1.12 * (efImp && (efImp.ef === 'red' || efImp.ef === 'pedo') ? 0.55 : 1);
+      let k = soyImp() && furia() ? 1.35 : 1; // 😡 furioso corre más
+      if (soyPresa()) k *= 1.12 * (efImp && (efImp.ef === 'red' || efImp.ef === 'pedo') ? 0.55 : 1);
+      return k;
     },
+    encerrar, furia,
+    preso: id => presos.includes(id),
     registrar(canal) {
       canal.on('broadcast', { event: 'arma' }, ({ payload }) => alArma(payload))
         .on('broadcast', { event: 'disparo' }, ({ payload }) => alDisparo(payload))
         .on('broadcast', { event: 'golpe' }, ({ payload }) => alGolpe(payload))
+        .on('broadcast', { event: 'trampa' }, ({ payload }) => alTrampa(payload))
+        .on('broadcast', { event: 'pisada' }, ({ payload }) => alPisada(payload))
+        .on('broadcast', { event: 'liberar' }, ({ payload }) => alLiberar(payload))
         // cada misión que haces durante la cacería te da más tiros
         .on('broadcast', { event: 'mision' }, ({ payload }) => {
           if (!partida || payload.id !== miId() || !arma) return;
@@ -490,6 +670,7 @@
       get caza() { return caza; }, get arma() { return arma; }, get municion() { return municion; }, get piezas() { return misPiezas; },
       darArma(a) { arma = a || 'platano'; municion = 30; S().enviar('arma', { id: miId(), a: arma }); pintarEstaciones(); },
       recogerTodo() { misPiezas.slice().forEach(recoger); },
+      get presos() { return presos; }, get trampas() { return trampas; }, get furiaHasta() { return furiaHasta; }, get misTrampas() { return misTrampas; }, get atrapadoHasta() { return atrapadoHasta; },
       armar,
     },
   };
